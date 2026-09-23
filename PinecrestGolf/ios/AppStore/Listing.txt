@@ -1,0 +1,23 @@
+DRAFT APP NAME
+Pinecrest Golf
+
+SUBTITLE
+72 holes. Build your golf game.
+
+DESCRIPTION
+Play 72 holes across four courses with different difficulties. Choose a full round, front nine or back nine.
+
+Select from 14 clubs, set your power and time your strike. Shape approaches with draw, fade, backspin and topspin. Read moving slope dots on the greens and account for wind, elevation, water and bunkers.
+
+Earn tokens and choose upgrades for individual clubs. Customize your golfer, learn through 12 tutorial lessons, and compete for course records.
+
+An internet connection is required. Play as a guest or create an email account to save your career across devices.
+
+KEYWORDS
+sports,golf,putting,clubs,course,spin,scorecard
+
+REVIEW NOTES DRAFT
+This iPhone app hosts the public interactive Pinecrest Golf web game in WKWebView. Internet access is required. Guest play is available. Email accounts save career progress. Choose a course and round length, then tap Play. Hold the swing button for power, release, then tap near the center of the timing meter. Use Spin before a shot. Complete holes to earn tokens for club upgrades. Course records show golfer names and scores.
+
+REQUIRED BEFORE SUBMISSION
+Test the final build on devices. Add account deletion. Publish accurate privacy and support pages. Supply the legal seller, copyright owner, reviewer contact, screenshots, final bundle identifier and review credentials as needed. Complete privacy disclosures, age rating and availability. Do not describe this build as offline or as having native haptics.

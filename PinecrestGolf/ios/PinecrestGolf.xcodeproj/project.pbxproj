@@ -1,0 +1,246 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		414D458A4445833FCC3E9669 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6D123AE8AB04EEE632CC6C18 /* PrivacyInfo.xcprivacy */; };
+		4B22036E1DD5F62EE6C58D47 /* PinecrestGolfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E9186A4C0DBC59A012CCF4 /* PinecrestGolfApp.swift */; };
+		6FE0BBEC37407380D400F491 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 795A02A63DC9C1E86758E98F /* Assets.xcassets */; };
+		C95176BFBFD370CBB96BC1CD /* GolfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22AC8B64618616799FA07532 /* GolfView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		22AC8B64618616799FA07532 /* GolfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GolfView.swift; sourceTree = "<group>"; };
+		6D123AE8AB04EEE632CC6C18 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		795A02A63DC9C1E86758E98F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9AC3B5AD93CBC0305C62F78F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A8792157CB4F27FB949C035F /* PinecrestGolf.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = PinecrestGolf.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F3E9186A4C0DBC59A012CCF4 /* PinecrestGolfApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PinecrestGolfApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E2AA269EB967A8853A258BFA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0A3E27B8CA818264D75C8D81 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A8792157CB4F27FB949C035F /* PinecrestGolf.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0D6E4079E36703EBD37C0072 = {
+			isa = PBXGroup;
+			children = (
+				E17E80AD8E2103CF3FC3FD96 /* PinecrestGolf */,
+				0A3E27B8CA818264D75C8D81 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E17E80AD8E2103CF3FC3FD96 /* PinecrestGolf */ = {
+			isa = PBXGroup;
+			children = (
+				F3E9186A4C0DBC59A012CCF4 /* PinecrestGolfApp.swift */,
+				22AC8B64618616799FA07532 /* GolfView.swift */,
+				9AC3B5AD93CBC0305C62F78F /* Info.plist */,
+				6D123AE8AB04EEE632CC6C18 /* PrivacyInfo.xcprivacy */,
+				795A02A63DC9C1E86758E98F /* Assets.xcassets */,
+			);
+			path = PinecrestGolf;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		34A04005BCAF206EEC990BD9 /* PinecrestGolf */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A1C421DAD96DFF096646A753 /* Build configuration list for PBXNativeTarget "PinecrestGolf" */;
+			buildPhases = (
+				878A52FC5FF6A57D50B7B870 /* Sources */,
+				E2AA269EB967A8853A258BFA /* Frameworks */,
+				41D311A605520FC7B8B9A980 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PinecrestGolf;
+			productName = PinecrestGolf;
+			productReference = A8792157CB4F27FB949C035F /* PinecrestGolf.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		244210E48437B6556980A702 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					34A04005BCAF206EEC990BD9 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = A964DD4136F390AFDF0E5FBA /* Build configuration list for PBXProject "PinecrestGolf" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 0D6E4079E36703EBD37C0072;
+			productRefGroup = 0A3E27B8CA818264D75C8D81 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				34A04005BCAF206EEC990BD9 /* PinecrestGolf */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		41D311A605520FC7B8B9A980 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				414D458A4445833FCC3E9669 /* PrivacyInfo.xcprivacy in Resources */,
+				6FE0BBEC37407380D400F491 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		878A52FC5FF6A57D50B7B870 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B22036E1DD5F62EE6C58D47 /* PinecrestGolfApp.swift in Sources */,
+				C95176BFBFD370CBB96BC1CD /* GolfView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0B0C687DF8B6B8DC790B519C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		6C7EFF6369083C8E1F2B1994 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = PinecrestGolf/Mac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
+				DEVELOPMENT_TEAM = QZSCX248DS;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PinecrestGolf/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dylanclark.pinecrest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		73EBF6644258C120893E685D /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		DD75E2CB1C510A828AC72D96 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = PinecrestGolf/Mac.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 5;
+				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
+				DEVELOPMENT_TEAM = QZSCX248DS;
+				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PinecrestGolf/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.dylanclark.pinecrest;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = YES;
+				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A1C421DAD96DFF096646A753 /* Build configuration list for PBXNativeTarget "PinecrestGolf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6C7EFF6369083C8E1F2B1994 /* Debug */,
+				DD75E2CB1C510A828AC72D96 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A964DD4136F390AFDF0E5FBA /* Build configuration list for PBXProject "PinecrestGolf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				73EBF6644258C120893E685D /* Debug */,
+				0B0C687DF8B6B8DC790B519C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 244210E48437B6556980A702 /* Project object */;
+}
