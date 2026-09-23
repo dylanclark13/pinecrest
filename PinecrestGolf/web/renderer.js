@@ -1,4 +1,4 @@
-import {height,surface,fairDistance,fairwayWidth,ellipse,seeded,clamp,CLUBS,BALL_RADIUS,CUP_RADIUS,waterLevel,inWater,greenGradient} from './physics.js';
+import {height,surface,fairDistance,fairwayWidth,ellipse,bunkerValue,bunkerRadius,seeded,clamp,CLUBS,BALL_RADIUS,CUP_RADIUS,waterLevel,inWater,greenGradient} from './physics.js';
 import {addGolfer} from './golfer.js';
 const TAU=Math.PI*2;
 export const V={sub:(a,b)=>a.map((n,i)=>n-b[i]),dot:(a,b)=>a.reduce((s,n,i)=>s+n*b[i],0),cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],norm:a=>{const l=Math.hypot(...a)||1;return a.map(n=>n/l);}};
@@ -43,19 +43,34 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     for(let iz=0;iz<zs.length-1;iz++)for(let ix=0;ix<xs.length-1;ix++){
       const x=xs[ix],z=zs[iz],xx=xs[ix+1],zz=zs[iz+1];if(links&&x>=138)continue;
       const cx=(x+xx)/2,cz=(z+zz)/2,lie=surface(h,cx,cz),fd=fairDistance(h,cx,cz);
-      let col=lie==='green'?[.44,.66,.245]:lie==='fringe'?[.35,.55,.18]:lie==='fairway'||lie==='tee'?(Math.floor((cz+cx*.32)/9)%2===0?colors.fair1:colors.fair2):lie==='sand'?[.82,.77,.57]:colors.rough;
+      // The sand gets its own smooth mesh. Keep the coarse ground grid grassy at its edge.
+      let col=lie==='green'?[.44,.66,.245]:lie==='fringe'?[.35,.55,.18]:(lie==='fairway'||lie==='tee'||lie==='sand'&&fd<fairwayWidth(h,cz))?(Math.floor((cz+cx*.32)/9)%2===0?colors.fair1:colors.fair2):colors.rough;
       if(lie==='rough'&&fd<fairwayWidth(h,cz)+3)col=[.28,.45,.17];
       const n=lie==='green'||lie==='fringe'?0:(rand()-.5)*.025;col=col.map(v=>v+n);const p=(a,b)=>[a,land(a,b),b];m.quad(p(x,z),p(x,zz),p(xx,zz),p(xx,z),col);
     }
-    const ring=(e,width,col,lift=.05)=>{for(let i=0;i<110;i++){const a=i/110*TAU,b=(i+1)/110*TAU,p=(t,ex)=>{const x=e[0]+Math.cos(t)*(e[2]+ex),z=e[1]+Math.sin(t)*(e[3]+ex);return [x,height(h,x,z)+lift,z];};m.quad(p(a,0),p(b,0),p(b,width),p(a,width),col);}};
-    for(const s of h.sand){ring(s,.55,[.51,.49,.30]);for(let i=0;i<11;i++){const z=s[1]+(i-5)*s[3]*.12,len=s[2]*Math.sqrt(Math.max(0,1-((z-s[1])/s[3])**2))*.8;for(let x=s[0]-len;x<s[0]+len;x+=1){const p=(a,b)=>[a,height(h,a,b)+.035,b];m.quad(p(x,z),p(x+1,z),p(x+1,z+.035),p(x,z+.035),[.72,.66,.48]);}}
-      const ry=height(h,s[0]+s[2]+1,s[1]);m.tube([s[0]+s[2]+1,ry+.1,s[1]-1],[s[0]+s[2]+1,ry+.1,s[1]+1.2],.035,.025,[.46,.34,.20],6);m.box([s[0]+s[2]+1,ry+.12,s[1]-1],[.8,.06,.10],[.19,.27,.22]);}
+    for(const s of h.sand){
+      const bands=[0,.34,.64,.82,.92,.985,1,1.055],shades=[[.84,.76,.57],[.87,.79,.60],[.84,.75,.54],[.74,.64,.44],[.57,.48,.32],[.91,.84,.65],[.34,.46,.22]];
+      const point=(radius,a)=>{const shape=bunkerRadius(s,a),x=s[0]+Math.cos(a)*s[2]*radius*shape,z=s[1]+Math.sin(a)*s[3]*radius*shape;
+        const lip=.16*Math.exp(-(((radius-.99)/.055)**2));return [x,land(x,z)+.16+lip,z];};
+      for(let k=0;k<bands.length-1;k++)for(let i=0;i<72;i++){
+        const a=i/72*TAU,b=(i+1)/72*TAU;
+        m.quad(point(bands[k],a),point(bands[k],b),point(bands[k+1],b),point(bands[k+1],a),shades[k]);
+      }
+      // Short, irregular rake marks remain inside the playable sand and follow its floor.
+      for(let j=-7;j<=7;j++)for(let i=-8;i<8;i++){
+        const x=s[0]+i*s[2]*.095+j*s[2]*.025,z=s[1]+j*s[3]*.105;
+        if(bunkerValue(x,z,s)>.76||bunkerValue(x+s[2]*.065,z,s)>.76)continue;
+        const p=(xx,zz)=>[xx,land(xx,zz)+.177,zz];
+        m.quad(p(x,z),p(x+s[2]*.065,z),p(x+s[2]*.065,z+s[3]*.004),p(x,z+s[3]*.004),[.73,.66,.49]);
+      }
+      const signX=s[0]+s[2]*1.11,ry=height(h,signX,s[1]);m.tube([signX,ry+.1,s[1]-1],[signX,ry+.1,s[1]+1.2],.035,.025,[.46,.34,.20],6);m.box([signX,ry+.12,s[1]-1],[.8,.06,.10],[.19,.27,.22]);
+    }
     for(const w of h.water){const wy=waterLevel(h,w);for(let z=w[1]-w[3];z<w[1]+w[3];z+=1.5)for(let x=w[0]-w[2];x<w[0]+w[2];x+=1.5){if(ellipse(x+.75,z+.75,w)>=1||![[x,z],[x,z+1.5],[x+1.5,z+1.5],[x+1.5,z]].every(([a,b])=>inWater(h,a,b)))continue;m.quad([x,wy,z],[x,wy,z+1.5],[x+1.5,wy,z+1.5],[x+1.5,wy,z],[.18,.42,.45]);}
       for(let i=0;i<40;i++){const a=rand()*TAU,x=w[0]+Math.cos(a)*(w[2]+.8),z=w[1]+Math.sin(a)*(w[3]+.8),y=height(h,x,z);if(rand()<.3)m.sphere(x,y+.23,z,.4+rand()*.4,.3,.5,[.45,.48,.40],4,7);else for(let j=0;j<3;j++)m.tube([x+j*.08,y,z],[x+j*.08+.1,y+.8+rand()*.4,z+.1],.018,.008,[.37,.39,.19],4);}}
     // A cart path follows the outside of the fairway.
     const path=h.centerline||h.path;for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]);for(let j=0;j<len;j+=3){const p=lerp(a,b,j/len),q=lerp(a,b,Math.min(1,(j+3)/len)),off=h.width+9;const v=(r,o)=>[r[0]+off+o,height(h,r[0]+off+o,r[1])+.045,r[1]];if(!inWater(h,p[0]+off,p[1]))m.quad(v(p,0),v(q,0),v(q,2),v(p,2),[.52,.51,.43]);}}
     // Mixed trees have trunks, branches, canopies, and grounded shadows.
-    for(let i=0;i<(links?85:park?460:ridge?450:650);i++){const x=(rand()-.5)*294,z=45-rand()*(60-minZ),fd=fairDistance(h,x,z);if(fd<fairwayWidth(h,z)+7||Math.hypot(x-h.pin[0],z-h.pin[1])<h.greenRadius+10||h.water.some(w=>ellipse(x,z,w,7)<1)||h.sand.some(s=>ellipse(x,z,s,4)<1))continue;
+    for(let i=0;i<(links?85:park?460:ridge?450:650);i++){const x=(rand()-.5)*294,z=45-rand()*(60-minZ),fd=fairDistance(h,x,z);if(fd<fairwayWidth(h,z)+7||Math.hypot(x-h.pin[0],z-h.pin[1])<h.greenRadius+10||h.water.some(w=>ellipse(x,z,w,7)<1)||h.sand.some(s=>bunkerValue(x,z,s)<1.35))continue;
       const y=land(x,z),ht=8+rand()*12,rr=2.5+rand()*2.2;this.trees.push({x,z,r:.5,h:ht,y,canopy:rr});m.cone(x,y,z,.32,ht*.7,[.28,.23,.16],7,.17);
       if(rand()<(park?.86:links?.1:ridge?.15:.30)){for(let k=0;k<4;k++){const a=k*TAU/4,bx=x+Math.cos(a)*rr*.7,bz=z+Math.sin(a)*rr*.7;m.tube([x,y+ht*.42,z],[bx,y+ht*.72,bz],.14,.055,[.28,.23,.16],5);m.sphere(bx,y+ht*(.70+rand()*.08),bz,rr,ht*.19,rr,[.22+rand()*.05,.36+rand()*.07,.15],5,8);}m.sphere(x,y+ht*.91,z,rr*.8,ht*.14,rr*.8,[.25,.41,.17],5,8);}
       else{const green=[.10+rand()*.025,.26+rand()*.055,.17+rand()*.035];for(let k=0;k<5;k++)m.cone(x,y+ht*(.2+k*.13),z,rr*(1-k*.15),ht*.4,green.map(c=>c*(1+k*.035)),10);}

@@ -43,13 +43,16 @@ export function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;retur
 export function lineDistance(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],den=dx*dx+dz*dz;const t=den?clamp(((x-a[0])*dx+(z-a[1])*dz)/den,0,1):0;return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);}
 export function fairDistance(h,x,z){let d=Infinity;const path=h.centerline||h.path;for(let i=1;i<path.length;i++)d=Math.min(d,lineDistance(x,z,path[i-1],path[i]));return d;}
 export function ellipse(x,z,e,extra=0){return ((x-e[0])/(e[2]+extra))**2+((z-e[1])/(e[3]+extra))**2;}
+// Use one outline for the rendered sand, the lie check, and the bunker floor.
+export function bunkerRadius(s,a){const phase=s[0]*.13+s[1]*.031;return .95+.035*Math.sin(3*a+phase)+.022*Math.sin(5*a-phase*.7)+.012*Math.sin(8*a+phase*2);}
+export function bunkerValue(x,z,s){const dx=(x-s[0])/s[2],dz=(z-s[1])/s[3],a=Math.atan2(dz,dx);return Math.hypot(dx,dz)/bunkerRadius(s,a);}
 export function inWater(h,x,z){return h.water.some(e=>ellipse(x,z,e)<1)&&!(h.island&&Math.hypot(x-h.pin[0],z-h.pin[1])<h.greenRadius+5);}
 export function fairwayWidth(h,z){return h.width*(1+.105*Math.sin(z*.028+h.seed*.12)+.045*Math.sin(z*.071));}
 export function surface(h,x,z){
   if(Math.abs(x)>113||z>43||z<h.pin[1]-62)return 'out';
   if(Math.abs(x)<4&&Math.abs(z)<6)return 'tee';
   if(inWater(h,x,z))return 'water';
-  if(h.sand.some(e=>ellipse(x,z,e)<1))return 'sand';
+  if(h.sand.some(e=>bunkerValue(x,z,e)<1))return 'sand';
   const g=Math.hypot(x-h.pin[0],z-h.pin[1]);
   if(g<(h.greenRadius||14))return 'green';
   if(g<(h.greenRadius||14)+2)return 'fringe';
@@ -64,7 +67,7 @@ export function height(h,x,z){
   const blend=clamp((g-r)/8,0,1);let y=green*(1-blend)+base*blend;
   const tee=clamp((Math.hypot(x,z)-5)/9,0,1);y=y*tee+.6*(1-tee);
   for(const w of h.water){const e=ellipse(x,z,w);if(e<1.12&&!(h.island&&g<r+5)){const level=waterLevel(h,w);const blend=clamp((1.12-e)/.12,0,1);y=y*(1-blend)+(level-.12-.6*Math.max(0,1-e))*blend;}}
-  for(const s of h.sand){const e=ellipse(x,z,s);if(e<1)y-=.6*(1-e);}
+  for(const s of h.sand){const d=bunkerValue(x,z,s);if(d<1){const bowl=1-d*d;y-=(h.biome==='links'?1.15:h.biome==='park'?.58:.84)*bowl*bowl;}}
   return y;
 }
 export function greenGradient(h,x,z){return [(height(h,x+.1,z)-height(h,x-.1,z))/.2,(height(h,x,z+.1)-height(h,x,z-.1))/.2];}

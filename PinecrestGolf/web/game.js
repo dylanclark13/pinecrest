@@ -1,5 +1,5 @@
 import {PALETTES,DEFAULT_LOOK} from './character.js';
-import {CLUBS,PUTTER_INDEX,YD,clamp,height,surface,makeBall,launch,stepBall,recommendedClub,lieFactor,effectiveWind,greenGradient} from './physics.js';
+import {CLUBS,PUTTER_INDEX,YD,clamp,height,surface,makeBall,launch,stepBall,recommendedClub,lieFactor,effectiveWind,greenGradient,bunkerRadius} from './physics.js';
 import {GolfRenderer} from './renderer.js';
 import {COURSES,TOTAL_HOLES} from './courses.js';
 import {TIERS,UPGRADE_COSTS,clubLevel,upgradeClub} from './progression.js';
@@ -106,7 +106,7 @@ function drawMap(){
   const pos=(x,z)=>[w/2+x*scale,pad+(maxZ-z)*scale];c.clearRect(0,0,w,h);c.lineCap='round';c.lineJoin='round';c.beginPath();(hole.centerline||hole.path).forEach((p,i)=>{const [x,y]=pos(...p);if(i)c.lineTo(x,y);else c.moveTo(x,y);});c.strokeStyle='#395c37';c.lineWidth=hole.width*2*scale+7;c.stroke();c.strokeStyle='#699552';c.lineWidth=hole.width*2*scale;c.stroke();
   for(const s of hole.water){const [x,y]=pos(s[0],s[1]);c.fillStyle='#6babb2';c.beginPath();c.ellipse(x,y,s[2]*scale,s[3]*scale,0,0,Math.PI*2);c.fill();}
   const [px,py]=pos(...hole.pin);if(hole.island){c.fillStyle='#62844c';c.beginPath();c.arc(px,py,(hole.greenRadius+5)*scale,0,Math.PI*2);c.fill();}c.fillStyle='#90b86b';c.beginPath();c.arc(px,py,hole.greenRadius*scale,0,Math.PI*2);c.fill();
-  for(const s of hole.sand){const [x,y]=pos(s[0],s[1]);c.fillStyle='#c9c391';c.beginPath();c.ellipse(x,y,s[2]*scale,s[3]*scale,0,0,Math.PI*2);c.fill();}
+  for(const s of hole.sand){c.fillStyle='#806c45';c.beginPath();for(let i=0;i<=56;i++){const a=i/56*Math.PI*2,r=bunkerRadius(s,a),[x,y]=pos(s[0]+Math.cos(a)*s[2]*r,s[1]+Math.sin(a)*s[3]*r);if(i)c.lineTo(x,y);else c.moveTo(x,y);}c.closePath();c.fill();c.strokeStyle='#e1d0a0';c.lineWidth=1.5;c.stroke();}
   c.strokeStyle='#f6f4e4';c.lineWidth=2;c.beginPath();c.moveTo(px,py);c.lineTo(px,py-15);c.stroke();c.fillStyle='#efd482';c.beginPath();c.moveTo(px,py-15);c.lineTo(px+10,py-12);c.lineTo(px,py-8);c.fill();
   const [bx,by]=pos(ball.x,ball.z);if(phase==='ready'){const d=Math.min(180,activeClub().range/YD),end=[ball.x+Math.sin(angle)*d,ball.z-Math.cos(angle)*d],[ex,ey]=pos(...end);c.strokeStyle='#e2f7aaa0';c.setLineDash([4,5]);c.lineWidth=1.5;c.beginPath();c.moveTo(bx,by);c.lineTo(ex,ey);c.stroke();c.setLineDash([]);}
   c.fillStyle='#fff';c.beginPath();c.arc(bx,by,4,0,Math.PI*2);c.fill();c.strokeStyle='#ffffff66';c.lineWidth=1;c.beginPath();c.arc(bx,by,7,0,Math.PI*2);c.stroke();
