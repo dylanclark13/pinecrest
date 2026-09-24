@@ -70,3 +70,7 @@
 @media(max-height:500px) and (pointer:coarse){
  .hole-panel,.wind-panel{top:54px}.course-tools{top:112px}.shot-panel{left:auto;right:10px;width:310px}.touch-aim{bottom:12px}.timing-panel{left:auto;right:10px;width:310px;transform:none}.map-panel{top:54px;right:100px}.toast{top:55px;max-width:300px}.flight-readout{bottom:12px}
 }
+
+/* Separate end-of-hole actions and leave room for keyboard focus outlines. */
+#holeDialog #nextHole{display:block;margin-top:18px;min-height:48px;}
+#holeDialog #resultScorecard{display:block;margin-top:16px;padding:12px 10px;min-height:44px;border-radius:7px;line-height:1.4;}
