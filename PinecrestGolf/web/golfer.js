@@ -95,11 +95,15 @@ export function addGolfer(m,club,phase,progress,power,time,appearance={}){
   // Clubhouse set colors carry through the polo trim and stand bag.
   m.box(body([-.781,1.24,-.105]),[.018,.105,.10],shirt.map(v=>v*.92));
   m.box(body([-.77,1.275,-.105]),[.02,.018,.10],steel);
+  return p;
+}
+export function addBag(m,club){
+  const dark=[.09,.12,.13],steel=club.finish||[.68,.73,.74];
   // A stand bag remains beside the player with visible spare clubs.
   const bag=[-2.25,0,-.45];m.ellipsoidBetween([bag[0],.13,bag[2]],[bag[0]+.14,.98,bag[2]],.16,.18,[.20,.29,.23],12);
   m.ellipsoidBetween([bag[0]+.14,.91,bag[2]],[bag[0]+.15,1.01,bag[2]],.17,.19,dark,12);
   // Keep the bag front clear of the former colored rectangular pocket.
   for(const side of[-1,1])m.tube([bag[0]+.07,.79,bag[2]+side*.1],[bag[0]+.45,.05,bag[2]+side*.27],.015,.012,steel,6);
   for(let i=0;i<5;i++){const a=[bag[0]+.08+(i%2)*.1,.9,bag[2]+(i-2)*.055],b=[a[0]-.08,1.13+(i%3)*.09,a[2]];m.tube(a,b,.005,.004,[.65,.69,.71],8);const spare=new m.constructor();addClubHead(spare,{type:i===0?'wood':'iron',id:i===0?'3wood':'7iron',finish:steel});m.addTransformed(spare,q=>[b[0]+q[0]*.8,b[1]-q[1]*.8,b[2]+q[2]*.8]);}
-  return p;
+
 }

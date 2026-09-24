@@ -5,7 +5,13 @@ import {holeReward,CLUB_IDS,UPGRADE_COSTS} from './progression.js';
 const PARS=[4,3,5,4,3,5,4,4,4,4,3,5,4,4,3,5,4,4];
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{'content-type':'application/json; charset=utf-8','cache-control':'no-store'}});
 function db(env){if(!env.DB)throw Error('Progress storage is unavailable.');return env.DB;}
-async function profile(env,user){const row=await db(env).prepare('SELECT tokens,club_levels,holes,rounds,display_name,appearance,onboarded FROM players WHERE user_id=?').bind(user).first();return {displayName:row?.display_name||'Golfer',appearance:JSON.parse(row?.appearance||'{}'),onboarded:Boolean(row?.onboarded),tokens:row?.tokens||0,clubLevels:JSON.parse(row?.club_levels||'{}'),holes:row?.holes||0,rounds:row?.rounds||0};}
+async function courseProgress(env,user){
+ const rows=await db(env).prepare("SELECT r.course,SUM(h.strokes) AS total FROM rounds r JOIN round_holes h ON h.round_id=r.id WHERE r.user_id=? AND r.status='complete' AND r.mode='full' GROUP BY r.id HAVING COUNT(DISTINCT h.hole)=18 AND MIN(h.hole)=0 AND MAX(h.hole)=17").bind(user).all();
+ const best={};for(const r of rows.results)best[r.course]=Math.min(best[r.course]??Infinity,r.total);
+ const unlocked=[0,1,2,3];for(let i=4;i<8;i++){const required=[2,3,...Array.from({length:i-4},(_,n)=>n+4)];if(required.every(c=>best[c]<=72))unlocked.push(i);}
+ return {courseBest:best,unlockedCourses:unlocked};
+}
+async function profile(env,user){const row=await db(env).prepare('SELECT tokens,club_levels,holes,rounds,display_name,appearance,onboarded FROM players WHERE user_id=?').bind(user).first();return {...await courseProgress(env,user),displayName:row?.display_name||'Golfer',appearance:JSON.parse(row?.appearance||'{}'),onboarded:Boolean(row?.onboarded),tokens:row?.tokens||0,clubLevels:JSON.parse(row?.club_levels||'{}'),holes:row?.holes||0,rounds:row?.rounds||0};}
 async function currentRound(env,user){const row=await db(env).prepare("SELECT id,course,mode,next_hole,end_hole,status FROM rounds WHERE user_id=? AND status='active' ORDER BY created_at DESC LIMIT 1").bind(user).first();if(!row)return null;const saved=await db(env).prepare('SELECT hole,strokes FROM round_holes WHERE round_id=? ORDER BY hole').bind(row.id).all();return {...row,scores:saved.results};}
 async function ensurePlayer(env,user){await db(env).prepare('INSERT OR IGNORE INTO players(user_id) VALUES(?)').bind(user).run();}
 async function handle(request,env,user,account=null){
@@ -22,7 +28,7 @@ async function handle(request,env,user,account=null){
   if(path==='/api/onboarding'&&request.method==='POST'){await ensurePlayer(env,user);await db(env).prepare('UPDATE players SET onboarded=1 WHERE user_id=?').bind(user).run();return json({profile:await profile(env,user)});}
   if(path==='/api/records'&&request.method==='GET'){
    const rows=await db(env).prepare("WITH totals AS (SELECT r.course,r.mode,r.user_id,SUM(h.strokes) AS strokes FROM rounds r JOIN round_holes h ON h.round_id=r.id WHERE r.status='complete' GROUP BY r.id HAVING COUNT(h.hole)=CASE WHEN r.mode='full' THEN 18 ELSE 9 END), best AS (SELECT course,mode,user_id,MIN(strokes) AS strokes FROM totals GROUP BY course,mode,user_id), ranked AS (SELECT b.*,p.display_name,ROW_NUMBER() OVER(PARTITION BY b.course,b.mode ORDER BY b.strokes,b.user_id) AS place FROM best b JOIN players p ON p.user_id=b.user_id) SELECT * FROM ranked WHERE place<=5 OR user_id=? ORDER BY strokes,place").bind(user).all();
-   const records=[];for(let course=0;course<4;course++)for(const mode of ['front','back','full']){const list=rows.results.filter(r=>r.course===course&&r.mode===mode),seen=new Set(),leaders=[];for(const r of list){if(seen.has(r.user_id))continue;seen.add(r.user_id);leaders.push({name:r.display_name,strokes:r.strokes});if(leaders.length===5)break;}const own=list.find(r=>r.user_id===user);records.push({course,mode,leaders,personal:own?.strokes??null});}return json({records});
+   const records=[];for(let course=0;course<8;course++)for(const mode of ['front','back','full']){const list=rows.results.filter(r=>r.course===course&&r.mode===mode),seen=new Set(),leaders=[];for(const r of list){if(seen.has(r.user_id))continue;seen.add(r.user_id);leaders.push({name:r.display_name,strokes:r.strokes});if(leaders.length===5)break;}const own=list.find(r=>r.user_id===user);records.push({course,mode,leaders,personal:own?.strokes??null});}return json({records});
   }
   if(path==='/api/upgrade'&&request.method==='POST'){
    const body=await request.json();if(!CLUB_IDS.includes(body.clubId)||!Number.isInteger(body.expectedLevel)||body.expectedLevel<0||body.expectedLevel>=4)return json({error:'Choose a club with an available upgrade.'},400);
@@ -32,7 +38,8 @@ async function handle(request,env,user,account=null){
    return json({profile:p,spent:cost,clubId:body.clubId});
   }
   if(path==='/api/rounds'&&request.method==='POST'){
-   const b=await request.json();if(!Number.isInteger(b.course)||b.course<0||b.course>3||!['front','back','full'].includes(b.mode))return json({error:'Choose a course and round length.'},400);
+   const b=await request.json();if(!Number.isInteger(b.course)||b.course<0||b.course>7||!['front','back','full'].includes(b.mode))return json({error:'Choose a course and round length.'},400);
+   const progress=await courseProgress(env,user);if(!progress.unlockedCourses.includes(b.course))return json({error:'Course locked. Finish the required 18 hole rounds in 72 strokes or fewer.'},403);
    const id=crypto.randomUUID(),start=b.mode==='back'?9:0,end=b.mode==='front'?8:17;await ensurePlayer(env,user);
    await db(env).batch([db(env).prepare("UPDATE rounds SET status='closed' WHERE user_id=? AND status='active'").bind(user),db(env).prepare('INSERT INTO rounds(id,user_id,course,mode,next_hole,end_hole,status,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(id,user,b.course,b.mode,start,end,'active',Date.now())]);return json({round:await currentRound(env,user),profile:await profile(env,user)});
   }

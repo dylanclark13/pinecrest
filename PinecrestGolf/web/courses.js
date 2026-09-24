@@ -12,18 +12,23 @@ const CONFIGS=[
   {id:'park',name:'Willow Park',difficulty:'Relaxed',level:1,biome:'park',tag:'Open parkland',description:'Wide fairways, sheltered approaches, and slower greens. A forgiving place to learn the new swing.',windScale:.45,widthScale:1.3,greenScale:1.2,greenFriction:.73,contour:.045,sweetSpot:.19,timingSpeed:1.15,roughFactor:.78,slopeScale:.55,seedOffset:340},
   {id:'woodland',name:'Pinecrest',difficulty:'Club',level:2,biome:'woodland',tag:'Woodland golf',description:'Tree-lined doglegs, lake carries, and rolling greens. Club choice and clean contact both matter.',windScale:.86,widthScale:1,greenScale:1,greenFriction:.59,contour:.07,sweetSpot:.13,timingSpeed:1.4,roughFactor:.70,slopeScale:.85,seedOffset:0},
   {id:'ridge',name:'Granite Highlands',difficulty:'Tour',level:3,biome:'ridge',tag:'Mountain golf',description:'Elevated greens, steep approaches, rocky ridges, and stronger crosswinds. Plan each landing area.',windScale:1.13,widthScale:.94,greenScale:.94,greenFriction:.52,contour:.085,sweetSpot:.10,timingSpeed:1.55,roughFactor:.66,slopeScale:1.05,seedOffset:620},
-  {id:'links',name:'Atlantic Links',difficulty:'Championship',level:4,biome:'links',tag:'Coastal golf',description:'Exposed dunes, firm fairways, deep bunkers, and fast greens. The narrowest timing window of the four courses.',windScale:1.45,widthScale:.91,greenScale:.94,greenFriction:.46,contour:.075,sweetSpot:.075,timingSpeed:1.7,roughFactor:.62,slopeScale:1.1,seedOffset:980}
+  {id:'links',name:'Atlantic Links',difficulty:'Championship',level:4,biome:'links',tag:'Coastal golf',description:'Exposed dunes, firm fairways, deep bunkers, and fast greens. A demanding timing window and little shelter from the wind.',windScale:1.45,widthScale:.91,greenScale:.94,greenFriction:.46,contour:.075,sweetSpot:.075,timingSpeed:1.7,roughFactor:.62,slopeScale:1.1,seedOffset:980}
 ];
+const eliteNames=['Blackwater Dunes','Ironwood Reserve','Stormglass Ridge','Crown Point'];
+for(let n=0;n<4;n++){
+ const base=CONFIGS[3];
+ CONFIGS.push({...base,id:'elite'+n,biome:['links','woodland','ridge','links'][n],variantId:base.id,name:eliteNames[n],difficulty:['Elite','Master','Legend','Final Challenge'][n],level:5+n,tag:'Challenge '+(n+1),description:['Tighter coastal landing zones and exposed approaches.','Longer woodland routes with smaller targets.','Stronger mountain winds and precise recovery shots.','The toughest test: narrow fairways, small greens and relentless wind.'][n],roughFactor:.60-n*.02,contour:.08+n*.005,widthScale:.87-n*.035,greenScale:.90-n*.035,windScale:1.50+n*.12,greenFriction:.45-n*.015,sweetSpot:.072-n*.004,timingSpeed:1.74+n*.055,slopeScale:1.12+n*.06,seedOffset:1400+n*410,requires:n===0?[2,3]:[2,3,...Array.from({length:n},(_,i)=>4+i)]});
+}
 export const COURSES=CONFIGS.map(cfg=>{
   const holes=ORIGINAL.map((source,i)=>{
-    const c=structuredClone(source),variant=cfg.id!=='woodland',stretch=variant?STRETCH[cfg.id][i]:1,bend=variant?BENDS[cfg.id][i]:0,finish=variant?FINISH[cfg.id][i]:0,len=Math.abs(source.pin[1]);
+    const c=structuredClone(source),variant=cfg.id!=='woodland',key=cfg.variantId||cfg.id,elite=cfg.level>4?cfg.level-4:0,stretch=(variant?STRETCH[key][i]:1)*(1+elite*.015),bend=(variant?BENDS[key][i]:0)+(elite?Math.sin(i*1.7+elite)*8:0),finish=variant?FINISH[key][i]:0,len=Math.abs(source.pin[1]);
     const transform=([x,z])=>{const u=clamp(-z/len,0,1.2);return [clamp(x*.94+Math.sin(u*Math.PI)*bend+u*finish,-98,98),z*stretch];};
     c.pin=variant?transform(source.pin):[...source.pin];c.path=variant?source.path.map(transform):source.path.map(p=>[...p]);c.centerline=smooth(c.path);
     c.sand=source.sand.map(s=>[...(variant?transform(s):s.slice(0,2)),s[2]*(cfg.id==='park'?.83:cfg.id==='links'?1.08:1),s[3]*stretch]);
     c.water=source.water.map(w=>[...(variant?transform(w):w.slice(0,2)),w[2]*(cfg.id==='park'?.85:1),w[3]*stretch]);
     if(cfg.id==='park'&&i%3===0)c.sand=c.sand.slice(0,2);
     if(cfg.id==='links'&&i%3===1&&!c.island){const p=c.path[Math.floor(c.path.length/2)];c.sand.push([p[0]+c.width*.7,p[1]-24,7,14]);}
-    c.name=variant?NAMES[cfg.id][i]:c.name;c.id=cfg.id+'-'+(i+1);c.seed+=cfg.seedOffset;c.biome=cfg.biome;c.courseId=cfg.id;c.level=cfg.level;
+    c.name=variant?(elite?['Blackwater','Ironwood','Stormglass','Crown'][elite-1]+' '+NAMES[key][i]:NAMES[key][i]):c.name;c.id=cfg.id+'-'+(i+1);c.seed+=cfg.seedOffset;c.biome=cfg.biome;c.courseId=cfg.id;c.level=cfg.level;
     c.width*=cfg.widthScale;c.greenRadius*=cfg.greenScale;c.wind=source.wind.map((v,j)=>v*cfg.windScale*(variant?(j===0?(i%2?-.92:1.06):1):1));
     c.elevation=cfg.id==='park'?source.elevation*.4:cfg.id==='ridge'?source.elevation*1.4+(i%2?6:11):cfg.id==='links'?source.elevation*.3:source.elevation;
     c.slope=source.slope.map(v=>v*cfg.slopeScale);c.greenFriction=cfg.greenFriction;c.contour=cfg.contour;c.sweetSpot=cfg.sweetSpot;c.timingSpeed=cfg.timingSpeed;c.roughFactor=cfg.roughFactor;
