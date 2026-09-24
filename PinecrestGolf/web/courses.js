@@ -17,7 +17,7 @@ const CONFIGS=[
 const eliteNames=['Blackwater Dunes','Ironwood Reserve','Stormglass Ridge','Crown Point'];
 for(let n=0;n<4;n++){
  const base=CONFIGS[3];
- CONFIGS.push({...base,id:'elite'+n,biome:['links','woodland','ridge','links'][n],variantId:base.id,name:eliteNames[n],difficulty:['Elite','Master','Legend','Final Challenge'][n],level:5+n,tag:'Challenge '+(n+1),description:['Tighter coastal landing zones and exposed approaches.','Longer woodland routes with smaller targets.','Stronger mountain winds and precise recovery shots.','The toughest test: narrow fairways, small greens and relentless wind.'][n],roughFactor:.60-n*.02,contour:.08+n*.005,widthScale:.87-n*.035,greenScale:.90-n*.035,windScale:1.50+n*.12,greenFriction:.45-n*.015,sweetSpot:.072-n*.004,timingSpeed:1.74+n*.055,slopeScale:1.12+n*.06,seedOffset:1400+n*410,requires:n===0?[2,3]:[2,3,...Array.from({length:n},(_,i)=>4+i)]});
+ CONFIGS.push({...base,id:'elite'+n,biome:['links','woodland','ridge','links'][n],variantId:base.id,name:eliteNames[n],difficulty:['Elite','Master','Legend','Final Challenge'][n],level:5+n,tag:'Challenge '+(n+1),description:['Tighter coastal landing zones and exposed approaches.','Longer woodland routes with smaller targets.','Stronger mountain winds and precise recovery shots.','The toughest test: narrow fairways, small greens and relentless wind.'][n],roughFactor:.60-n*.02,contour:.08+n*.005,widthScale:.87-n*.035,greenScale:.90-n*.035,windScale:1.50+n*.12,greenFriction:.45-n*.015,sweetSpot:.072-n*.004,timingSpeed:1.74+n*.055,slopeScale:1.12+n*.06,seedOffset:1400+n*410,requires:[n+3]});
 }
 export const COURSES=CONFIGS.map(cfg=>{
   const holes=ORIGINAL.map((source,i)=>{

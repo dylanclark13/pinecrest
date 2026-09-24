@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import vm from 'node:vm';
+import * as physics from '../web/physics.js';
+import * as courses from '../web/courses.js';
+import * as progression from '../web/progression.js';
+import * as character from '../web/character.js';
+import * as challenges from '../web/challenges.js';
+import {request} from './features.mjs';
+const html=fs.readFileSync(new URL('../web/index.html',import.meta.url),'utf8');
+const noop=()=>{},ctx2d=new Proxy({},{get:()=>noop,set:()=>true});
+class Element{constructor(id){this.id=id;this.hidden=false;this.open=false;this.value='';this.dataset={};this.style={};this.width=300;this.height=400;this.classList={add:noop,remove:noop,toggle:noop};}getContext(){return ctx2d}setAttribute(){}getAttribute(){return 'false'}addEventListener(){}querySelector(){return new Element('child')}showModal(){this.open=true}close(){this.open=false}getBoundingClientRect(){return {left:0,top:0,width:300,height:400}}}
+const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Element(m[1])]));
+const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
+let renderCalls=0;
+class Renderer{constructor(){this.eye=[2,3,6];this.center=[0,0,0];this.trees=[]}loadHole(h){this.h=h}render(state){assert(state.hole);assert(Number.isFinite(state.ball.x));renderCalls++}pointOnCourse(){return null}}
+const context=vm.createContext({...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
+const source=fs.readFileSync(new URL('../web/game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');vm.runInContext(source,context);
+await new Promise(r=>setImmediate(r));const run=s=>vm.runInContext(s,context);
+run("for(const el of document.querySelectorAll('dialog[open]'))el.close()");for(const e of elements.values())e.close();
+run('profileLoaded=true;homeOpen=true');
+await run('startSelectedRound()');assert.equal(run('homeOpen'),false);
+run('strokes=2;ball.x=3;ball.z=-25;holeMetrics.putts=1;showCourses()');const old=run('JSON.stringify({courseIndex,holeIndex,ball,strokes,roundId,holeMetrics})');
+const before=(await request('/api/profile',undefined,'ui')).body.profile;
+run("startPractice('range')");assert.equal(run('practice'),'range');assert.equal(run('roundId'),null);
+run('strokes=1;shotDistance=100;shotCarry=85;restAfterShot()');assert(elements.get('practiceFeedback').textContent.includes('carry'));
+run('showCourses()');assert.equal(run('JSON.stringify({courseIndex,holeIndex,ball,strokes,roundId,holeMetrics})'),old);
+assert.deepEqual((await request('/api/profile',undefined,'ui')).body.profile,before);
+run("startPractice('putting')");assert.equal(run('view'),'putting');assert.equal(run('clubIndex'),physics.PUTTER_INDEX);assert.equal(run('surface(hole,ball.x,ball.z)'),'green');
+run('strokes=1;ball.holed=true;finishHole()');assert.equal(run('pendingScore'),null);assert(elements.get('practiceFeedback').textContent.includes('Holed'));
+run('resetPractice()');assert.equal(run('ball.holed'),false);
+run('phase="accuracy";timingNeedle=0;power=.5;commitStrike()');assert(run('recording'));run('impact();captureReplay(.05);ball.moving=false;restAfterShot()');assert(run('lastReplay.frames.length>=2'));
+const unchanged=run('JSON.stringify({ball,strokes,phase,holeMetrics})');run('startReplay();playReplay(.016);stopReplay()');assert.equal(run('JSON.stringify({ball,strokes,phase,holeMetrics})'),unchanged);
+run('showCourses()');assert.equal(run('strokes'),2);assert.equal(run('practice'),null);
+await elements.get('startDaily').onclick();assert.equal(run('roundMode'),'daily');assert.equal(run('roundEnd-roundStart+1'),3);assert.equal(run('hole.gust'),0);assert.equal(run('JSON.stringify(hole.wind)'),run('JSON.stringify(dailyConfig.wind)'));
+await run('loadStats()');assert(elements.get('personalStats').innerHTML.includes('Putts per hole'));
+run('renderEquipment()');assert(elements.get('equipmentChoices').innerHTML.includes('percentage points'));assert(elements.get('equipmentChoices').innerHTML.includes('Timing window grows'));
+console.log('PASS complete DOM wiring, practice isolation/restoration, putting setup, replay without gameplay mutation, daily entry, stats and upgrade comparisons.');

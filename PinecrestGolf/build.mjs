@@ -5,4 +5,5 @@ for(const file of await fs.readdir(new URL('web/',root))){if(file.startsWith('.'
 await fs.writeFile(new URL('server/assets.js',out),'export const ASSETS='+JSON.stringify(assets)+';\n');
 await fs.copyFile(new URL('worker/index.js',root),new URL('server/index.js',out));await fs.copyFile(new URL('web/progression.js',root),new URL('server/progression.js',out));await fs.copyFile(new URL('.openai/hosting.json',root),new URL('.openai/hosting.json',out));await fs.cp(new URL('drizzle/',root),new URL('.openai/drizzle/',out),{recursive:true});
 await fs.copyFile(new URL('worker/auth.js',root),new URL('server/auth.js',out));await fs.copyFile(new URL('web/character.js',root),new URL('server/character.js',out));
+await fs.copyFile(new URL('web/challenges.js',root),new URL('server/challenges.js',out));
 const module=await import(new URL('server/index.js',out));if(typeof module.default?.fetch!=='function')throw Error('Worker fetch entrypoint missing');console.log('Built golf game, saved progression API, and migrations.');

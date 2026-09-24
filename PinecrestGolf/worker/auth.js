@@ -35,6 +35,7 @@ export async function authRequest(request,env,user,account){
    await env.DB.batch([
     env.DB.prepare('DELETE FROM round_holes WHERE round_id IN (SELECT id FROM rounds WHERE user_id=?)').bind(found.player_id),
     env.DB.prepare('DELETE FROM rounds WHERE user_id=?').bind(found.player_id),
+    env.DB.prepare('DELETE FROM daily_rewards WHERE user_id=?').bind(found.player_id),
     env.DB.prepare('DELETE FROM players WHERE user_id=?').bind(found.player_id),
     env.DB.prepare('DELETE FROM sessions WHERE account_id=?').bind(found.id),
     env.DB.prepare('DELETE FROM accounts WHERE id=?').bind(found.id),
