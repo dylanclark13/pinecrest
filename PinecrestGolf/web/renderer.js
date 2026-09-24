@@ -109,7 +109,7 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     else if(moving&&!watchingSwing){const speed=Math.hypot(b.vx,b.vz),vx=speed>1?b.vx/speed:dir[0],vz=speed>1?b.vz/speed:dir[2];eye=[b.x-vx*(near?9:19),b.y+(near?5:10),b.z-vz*(near?9:19)];center=[b.x+vx*9,b.y-.2,b.z+vz*9];}
     else {const gy=height(h,actor.x,actor.z),mobile=w<760;const side=mobile?-.55:1.8,back=mobile?5.0:5.5;eye=[actor.x-dir[0]*back+right[0]*side,gy+(mobile?2.65:2.65),actor.z-dir[2]*back+right[2]*side];center=[actor.x+dir[0]*(near?4:8)-right[0]*(mobile?.55:.2),gy+(near?-.1:mobile?-.8:-.45),actor.z+dir[2]*(near?4:8)-right[2]*(mobile?.55:.2)];}
     const sm=1-Math.exp(-dt*(moving?3.2:5));this.eye=lerp(this.eye,eye,sm);this.center=lerp(this.center,center,sm);this.eye[1]=Math.max(this.eye[1],height(h,this.eye[0],this.eye[2])+1.35);
-    this.fov=55*Math.PI/180;this.aspect=w/hg;this.matrix=mult(perspective(this.fov,this.aspect,.25,2100),lookAt(this.eye,this.center));
+    const focus=actor.cinematic&&actor.phase==='downswing'?Math.sin(actor.progress*Math.PI)*5:0;this.fov=(55-focus)*Math.PI/180;this.aspect=w/hg;this.matrix=mult(perspective(this.fov,this.aspect,.25,2100),lookAt(this.eye,this.center));
     const gl=this.gl;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(this.loc.matrix,false,this.matrix);gl.uniform3fv(this.loc.eye,this.eye);gl.uniform1f(this.loc.time,this.time);this.draw(this.world);
     const m=new MeshBuilder(),px=h.pin[0],pz=h.pin[1],py=height(h,px,pz);
     // The flag moves in the current wind.
@@ -125,6 +125,14 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     const by=height(h,b.x,b.z)+.028,shadowR=clamp(.08+(b.y-by)*.017,.08,.6);
     for(let i=0;i<18;i++){const a=i/18*TAU,c=(i+1)/18*TAU,p=t=>{const x=b.x+Math.cos(t)*shadowR,z=b.z+Math.sin(t)*shadowR;return [x,height(h,x,z)+.04,z];};m.tri([b.x,height(h,b.x,b.z)+.04,b.z],p(c),p(a),[.13,.22,.10]);}
     if(!b.holed){const eyeDist=Math.hypot(...V.sub(this.eye,[b.x,b.y,b.z])),rad=view==='overview'?.65:Math.max(BALL_RADIUS,Math.min(.18,eyeDist*.003));m.sphere(b.x,b.y+.005,b.z,rad,rad,rad,[1,1,.96],8,12);}
+    // A brief burst at the strike point celebrates perfect contact.
+    if(actor.cinematic&&actor.phase==='follow'&&actor.progress<.55){
+      const t=actor.progress/.55,scale=actor.club.type==='putter'?.38:1,ay=height(h,actor.x,actor.z)+.10;
+      for(let i=0;i<18;i++){const a=i/18*TAU,r=(.12+t*1.8)*scale,rr=r+.22*(1-t)*scale;
+        const p=q=>[actor.x+Math.cos(a)*q,ay+Math.sin(t*Math.PI)*.32*scale,actor.z+Math.sin(a)*q];
+        m.tube(p(r),p(rr),.018*(1-t),.008*(1-t),[1,.86,.46],4);
+      }
+    }
     // Short sightline replaces the old exact flight predictor in the harder game.
     if(!moving&&!b.holed&&actor.phase==='address'){const ad=[Math.sin(angle),-Math.cos(angle)],len=near?Math.min(6,Math.hypot(px-b.x,pz-b.z)):13;for(let t=.7;t<len;t+=.7){const x=b.x+ad[0]*t,z=b.z+ad[1]*t,xx=b.x+ad[0]*(t+.38),zz=b.z+ad[1]*(t+.38);m.tube([x,height(h,x,z)+.07,z],[xx,height(h,xx,zz)+.07,zz],.015,.015,[.84,.94,.59],4);}}
     // Dots travel downhill with slope-scaled speed, shrinking at loop boundaries to avoid popping.

@@ -19,7 +19,7 @@ const ready=()=>!homeOpen&&phase==='ready'&&!finished&&!isModal();
 const finalHole=()=>holeIndex===roundEnd;
 function activeClub(){const c=upgradeClub(CLUBS[clubIndex],clubLevel(career,CLUBS[clubIndex].id));if(clubIndex!==PUTTER_INDEX)return c;const d=Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])*YD;return {...c,range:Math.round(clamp(d*1.75,3,30))};}
 function toast(text,duration=3000){$('toast').textContent=text;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),duration);}
-function playTone(kind){if(!sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const now=audioContext.currentTime,notes=kind==='cup'?[523,659,784,1046]:kind==='hit'?[clubIndex===PUTTER_INDEX?330:150]:kind==='water'?[100,70]:[200];notes.forEach((freq,i)=>{const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=kind==='hit'?'triangle':'sine';osc.frequency.setValueAtTime(freq,now+i*.12);if(kind==='hit')osc.frequency.exponentialRampToValueAtTime(50,now+.12);gain.gain.setValueAtTime(.0001,now+i*.12);gain.gain.exponentialRampToValueAtTime(.12,now+i*.12+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+i*.12+.22);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.12);osc.stop(now+i*.12+.25);});}catch{sound=false;}}
+function playTone(kind){if(!sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const now=audioContext.currentTime,notes=kind==='cup'?[523,659,784,1046]:kind==='pure'?[90,180,360]:kind==='hit'?[clubIndex===PUTTER_INDEX?330:150]:kind==='water'?[100,70]:[200];notes.forEach((freq,i)=>{const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=kind==='hit'?'triangle':'sine';osc.frequency.setValueAtTime(freq,now+i*.12);if(kind==='hit')osc.frequency.exponentialRampToValueAtTime(50,now+.12);gain.gain.setValueAtTime(.0001,now+i*.12);gain.gain.exponentialRampToValueAtTime(.12,now+i*.12+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+i*.12+.22);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.12);osc.stop(now+i*.12+.25);});}catch{sound=false;}}
 function setAddress(){actor={x:ball.x,z:ball.z,angle,club:activeClub(),appearance:career.appearance,phase:'address',progress:0,power:.7};}
 function updateSuggestion(){
   if(phase!=='ready')return;const c=activeClub(),d=Math.hypot(aimTarget[0]-ball.x,aimTarget[1]-ball.z)*YD,lie=surface(hole,ball.x,ball.z),roll=c.type==='wood'?1.1:c.type==='putter'?1:1.045;
@@ -74,11 +74,11 @@ function commitStrike(){
   const timingWindow=Math.min(.30,hole.sweetSpot*activeClub().forgiveness*(clubIndex===PUTTER_INDEX?1.15:1));const perfect=Math.abs(timingNeedle)<timingWindow;accuracy=perfect?0:Math.sign(timingNeedle)*(Math.abs(timingNeedle)-timingWindow)/(1-timingWindow);
   lastStrike=perfect?'PURE STRIKE':Math.abs(accuracy)<.2?'SOLID CONTACT':accuracy<0?'EARLY · HOOK':'LATE · SLICE';
   if(clubIndex===PUTTER_INDEX&&!perfect)lastStrike=accuracy<0?'PULLED PUTT':'PUSHED PUTT';
-  phase='downswing';downswingTime=0;actor.phase='downswing';actor.progress=0;actor.power=power;actor.club=activeClub();actor.angle=angle;updateUI();
+  phase='downswing';downswingTime=0;actor.phase='downswing';actor.progress=0;actor.power=power;actor.club=activeClub();actor.angle=angle;actor.pure=perfect;actor.cinematic=perfect&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches;updateUI();
 }
 function impact(){
   lastLie={x:ball.x,z:ball.z};shotStart={...lastLie};shotDistance=0;shotCarry=0;shotInFlight=true;collisionCooldown=0;trail=[];strokes++;
-  launch(ball,hole,actor.club,power,angle,accuracy,{back:spinBack,shape:spinShape});phase='flight';followTime=0;actor.phase='follow';actor.progress=0;playTone('hit');
+  launch(ball,hole,actor.club,power,angle,accuracy,{back:spinBack,shape:spinShape});phase='flight';followTime=0;actor.phase='follow';actor.progress=0;playTone(actor.pure?'pure':'hit');
   toast(lastStrike==='PURE STRIKE'?'Pure strike.':lastStrike.toLowerCase().replace(/^./,c=>c.toUpperCase()),1700);updateUI();drawMap();
 }
 function restAfterShot(penalty=false){
@@ -243,7 +243,7 @@ function animate(now){
     if((aimKey||pointerAim)&&ready()){aimClock+=dt;if(aimClock>.035){aimDelta((aimKey||pointerAim)*aimClock*(clubIndex===PUTTER_INDEX?.15:.32));aimClock=0;}}
     if(phase==='power'){chargeTime+=dt;const t=(chargeTime/(clubIndex===PUTTER_INDEX?1.25:1.05))%2;power=clamp(t<=1?t:2-t,.008,1);actor.progress=Math.min(1,chargeTime/.2);actor.power=power;}
     if(phase==='accuracy'){timingTime+=dt;const speed=clubIndex===PUTTER_INDEX?hole.timingSpeed*.66:hole.timingSpeed,t=(timingTime*speed)%2;timingNeedle=-1+2*(t<=1?t:2-t);if(timingTime>3){timingNeedle=1;commitStrike();}}
-    if(phase==='downswing'){downswingTime+=dt;const duration=actor.club.type==='putter'?.16:.20;actor.progress=clamp(downswingTime/duration,0,1);if(downswingTime>=duration)impact();}
+    if(phase==='downswing'){downswingTime+=dt;const duration=actor.cinematic?(actor.club.type==='putter'?.42:.70):(actor.club.type==='putter'?.16:.20),t=clamp(downswingTime/duration,0,1);actor.progress=actor.cinematic?(t<.8?t*.45:.36+(t-.8)*3.2):t;if(downswingTime>=duration)impact();}
     if(actor?.phase==='follow'){followTime+=dt;actor.progress=clamp(followTime/.60,0,1);}
     if(ball.moving){accum+=dt;for(let i=0;i<8&&accum>=1/120&&ball.moving;i++){
       accum-=1/120;const previous={x:ball.x,z:ball.z},event=stepBall(ball,hole,1/120);shotDistance=Math.hypot(ball.x-shotStart.x,ball.z-shotStart.z);collisionCooldown-=1/120;
