@@ -81,6 +81,81 @@
 
 .account-links{flex-wrap:wrap}.account-links button{font-size:14px}#passwordHelp p{font-size:16px;line-height:1.6}#passwordHelp .support-address{overflow-wrap:anywhere;font-size:14px}#passwordSupport{display:inline-flex;text-decoration:none;align-items:center;min-height:44px}#passwordHelpBack{display:block;min-height:44px}
 
+/* HUD panels occupy flowing rows and scrollable rails instead of shared coordinates. */
+#game{min-height:0;height:100dvh}
+.hud-layout{position:absolute;inset:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto;gap:12px;padding:16px max(16px,env(safe-area-inset-right)) max(12px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));pointer-events:none;min-width:0;min-height:0}
+#game.at-home .hud-layout{visibility:hidden;pointer-events:none}
+.hud-layout .topbar{position:static;inset:auto;height:auto;min-height:44px;padding:0;flex-wrap:wrap;gap:12px;pointer-events:auto}
+.hud-layout .top-actions{flex-wrap:wrap;justify-content:flex-end;gap:8px}
+.hud-middle{display:grid;grid-template-columns:minmax(0,284px) minmax(0,1fr) minmax(0,210px);gap:16px;min-height:0;min-width:0;overflow:hidden}
+.hud-rail{display:flex;flex-direction:column;gap:12px;min-height:0;max-height:100%;min-width:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;align-self:start;padding:4px;pointer-events:auto}
+.hud-center{display:flex;flex-direction:column;gap:12px;align-items:center;min-height:0;min-width:0;overflow:auto;align-self:start;max-height:100%;padding:4px}
+.hud-layout :is(.hole-panel,.practice-controls,.caddie-note,.shot-summary,.wind-panel,.course-tools,.map-panel,.toast,.replay-controls,.flight-readout,.aim-tip,.touch-aim,.timing-panel,.shot-panel,.bottom-note){position:static;inset:auto;transform:none;margin:0;max-width:100%;min-width:0;flex-shrink:0;pointer-events:auto}
+.hud-left :is(.hole-panel,.practice-controls,.caddie-note,.shot-summary){width:100%}
+.hud-right :is(.wind-panel,.course-tools,.map-panel){width:100%}
+.hud-layout .course-tools{align-items:stretch;flex-wrap:wrap}
+.hud-layout .tool-button{justify-content:center;white-space:normal;min-height:44px}
+.hud-layout .practice-controls{gap:10px;padding:14px;line-height:1.5}
+.hud-layout .practice-controls label{margin:0;flex-wrap:wrap}
+.hud-layout .practice-controls select{min-width:0}
+.hud-layout .shot-summary>div{flex-wrap:wrap;gap:12px}
+.hud-layout .shot-summary:has(#replayShot:not([hidden])){position:static;max-width:100%}
+.hud-layout .toast{width:100%;border-radius:12px;overflow-wrap:anywhere}
+.hud-layout .toast:not(.visible){display:none}
+.hud-layout .replay-controls{width:100%;flex-wrap:wrap;justify-content:center;line-height:1.4}
+.hud-layout .flight-readout{text-align:center}
+.hud-layout #minimap{width:100%;height:auto;aspect-ratio:240/290}
+.hud-bottom{display:flex;flex-direction:column;gap:10px;align-items:center;min-width:0;max-height:55dvh;overflow:auto;padding:4px;pointer-events:none}
+.hud-layout .shot-panel{width:100%;max-width:1110px;flex-wrap:wrap;gap:16px;padding:16px}
+.hud-layout .club-section{min-width:0;flex:1 1 210px}
+.hud-layout .swing-section{min-width:0;flex:1 1 220px}
+.hud-layout .swing-button{min-width:0;min-height:48px;flex:1 1 210px;padding:12px}
+.hud-layout .timing-panel{width:min(100%,430px);padding:14px}
+.hud-layout .timing-panel>div:first-child{flex-wrap:wrap;gap:6px}
+.hud-layout .bottom-note{width:100%;gap:12px;flex-wrap:wrap;line-height:1.4}
+.hud-layout .aim-tip{white-space:normal;text-align:center;flex-wrap:wrap;justify-content:center}
+.hud-layout .outline-button{height:auto;min-height:40px;padding-block:8px;white-space:normal}
+.hud-layout :is(.small-label,.lie-details,.hole-stats,.shot-stats,.power-caption,.club-label-row){flex-wrap:wrap;overflow-wrap:anywhere}
+.hud-layout .hole-stats,.hud-layout .shot-stats{gap:10px}
+.hud-layout .power-label{gap:8px;flex-wrap:wrap}
+.hud-layout .touch-aim{align-self:flex-start}
+.hud-layout .touch-aim button{flex:none}
+#game:has(#timingPanel:not([hidden])) .touch-aim{display:none}
+@media(max-width:900px){
+ .hud-middle{grid-template-columns:minmax(0,240px) minmax(0,1fr) minmax(0,175px);gap:10px}
+ .hud-layout .brand{font-size:16px}.hud-layout .round-label{display:none}
+}
+@media(max-width:760px),(max-height:500px) and (pointer:coarse){
+ .hud-layout{gap:6px;padding:6px max(6px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left))}
+ .hud-layout .topbar{justify-content:flex-end}
+ .hud-middle{grid-template-columns:minmax(0,1fr) minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:6px}
+ .hud-center{grid-column:1/-1;grid-row:1;width:100%;padding:0;max-height:20dvh;pointer-events:auto}
+ .hud-center:has(.toast:not(.visible)):not(:has(.replay-controls:not([hidden]))):not(:has(.flight-readout:not([hidden]))){display:none}
+ .hud-left{grid-column:1;grid-row:2}.hud-right{grid-column:2;grid-row:2}
+ .hud-rail{gap:8px;padding:2px}
+ .hud-layout .hole-panel{display:block;padding:10px}
+ .hud-layout .hole-top{flex-direction:row;flex-wrap:wrap;margin-bottom:8px;gap:6px}
+ .hud-layout .shot-stats{justify-content:space-between;gap:8px}
+ .hud-layout .shot-stats strong{font-size:18px}
+ .hud-layout .wind-panel{justify-content:center}
+ .hud-layout .course-tools{flex-direction:column;max-width:100%;gap:6px}
+ .hud-layout .practice-controls{font-size:14px;padding:10px;gap:8px}
+ .hud-layout .practice-controls strong{font-size:14px}
+ .hud-layout .practice-controls label{display:block}
+ .hud-layout .practice-controls select{display:block;width:100%;margin-top:6px}
+ .hud-layout .shot-summary:has(#replayShot:not([hidden])){display:block}
+ .hud-layout .shot-panel{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;padding:10px}
+ .hud-layout .club-section{padding:0;border:0}
+ .hud-layout .swing-button{grid-column:1/-1;padding:8px}
+ .hud-layout .club-chooser>div{min-width:0;overflow-wrap:anywhere}
+ .hud-layout .timing-panel{width:100%;padding:10px}
+ .hud-bottom{gap:6px;max-height:50dvh}
+ .hud-layout .touch-aim{display:flex;gap:8px}
+ .hud-layout .shot-summary>div{gap:8px}
+ .hud-layout .map-panel{max-width:100%}
+}
+@media(max-height:500px){.hud-layout .topbar{min-height:36px}.hud-layout .brand,.hud-layout .bottom-note,.hud-layout .aim-tip{display:none}.hud-bottom{max-height:45dvh}.hud-layout .shot-panel{padding:8px}.hud-layout .shot-panel .power-caption{display:none}.hud-layout .touch-aim{display:none}}
+
 #game{height:100dvh;min-height:0}button,input{touch-action:manipulation}
 
 #accountButton,#saveProgressBanner,#onboardingAccountPrompt,#createAccountCTA,#signInCTA{display:none!important}
