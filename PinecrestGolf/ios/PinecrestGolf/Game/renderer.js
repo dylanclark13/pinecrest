@@ -1,5 +1,5 @@
-import {height,surface,fairDistance,fairwayWidth,ellipse,seeded,clamp,CLUBS,BALL_RADIUS,CUP_RADIUS,waterLevel,inWater,greenGradient} from './physics.js';
-import {addGolfer} from './golfer.js';
+import {height,surface,fairDistance,fairwayWidth,ellipse,bunkerValue,bunkerRadius,seeded,clamp,CLUBS,BALL_RADIUS,CUP_RADIUS,waterLevel,inWater,greenGradient,onCartPath,cartPathX} from './physics.js';
+import {addGolfer,addBag} from './golfer.js';
 const TAU=Math.PI*2;
 export const V={sub:(a,b)=>a.map((n,i)=>n-b[i]),dot:(a,b)=>a.reduce((s,n,i)=>s+n*b[i],0),cross:(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]],norm:a=>{const l=Math.hypot(...a)||1;return a.map(n=>n/l);}};
 const lerp=(a,b,t)=>a.map((v,i)=>v+(b[i]-v)*t);
@@ -35,27 +35,41 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
   buffer(data){const b=this.gl.createBuffer();this.gl.bindBuffer(this.gl.ARRAY_BUFFER,b);this.gl.bufferData(this.gl.ARRAY_BUFFER,new Float32Array(data),this.gl.STATIC_DRAW);return {buffer:b,count:data.length/9};}
   setData(mesh,data){this.gl.bindBuffer(this.gl.ARRAY_BUFFER,mesh.buffer);this.gl.bufferData(this.gl.ARRAY_BUFFER,new Float32Array(data),this.gl.DYNAMIC_DRAW);mesh.count=data.length/9;}
   loadHole(h){
-    this.h=h;this.trees=[];const m=new MeshBuilder(),rand=seeded(h.seed),d=3,minZ=h.pin[1]-95;const biome=h.biome||'woodland',links=biome==='links',park=biome==='park',ridge=biome==='ridge';const colors=links?{rough:[.47,.46,.26],fair1:[.38,.48,.22],fair2:[.43,.52,.25]}:park?{rough:[.26,.43,.18],fair1:[.31,.53,.20],fair2:[.35,.57,.22]}:{rough:[.22,.38,.155],fair1:[.27,.48,.17],fair2:[.32,.54,.19]};
+    this.h=h;this.bagAnchor=null;this.trees=[];const m=new MeshBuilder(),rand=seeded(h.seed),d=3,minZ=h.pin[1]-95;const biome=h.biome||'woodland',links=biome==='links',park=biome==='park',ridge=biome==='ridge';const colors=links?{rough:[.47,.46,.26],fair1:[.38,.48,.22],fair2:[.43,.52,.25]}:park?{rough:[.26,.43,.18],fair1:[.31,.53,.20],fair2:[.35,.57,.22]}:{rough:[.22,.38,.155],fair1:[.27,.48,.17],fair2:[.32,.54,.19]};
     const land=(x,z)=>height(h,x,z)+Math.max(Math.abs(x)-108,0)**1.3*(links?.014:ridge?.04:.028);
     // One continuous surface: refine aligned grid lines around the green instead of layering patches.
-    const grid=(lo,hi,pin,r)=>{const a=[];for(let v=lo;v<hi;v+=d){const steps=Math.abs(v+d/2-pin)<r+9?6:1;for(let i=0;i<steps;i++)a.push(v+Math.min(d,hi-v)*i/steps);}a.push(hi);return a;};
-    const xs=grid(-165,165,h.pin[0],h.greenRadius),zs=grid(minZ,90,h.pin[1],h.greenRadius);
+    const grid=(lo,hi,pin,r,axis)=>{const a=[];for(let v=lo;v<hi;v+=d){const steps=Math.abs(v+d/2-pin)<r+9||h.sand.some(s=>Math.abs(v+d/2-s[axis])<s[axis+2]+4)?6:1;for(let i=0;i<steps;i++)a.push(v+Math.min(d,hi-v)*i/steps);}a.push(hi);return a;};
+    const xs=grid(-165,165,h.pin[0],h.greenRadius,0),zs=grid(minZ,90,h.pin[1],h.greenRadius,1);
     for(let iz=0;iz<zs.length-1;iz++)for(let ix=0;ix<xs.length-1;ix++){
       const x=xs[ix],z=zs[iz],xx=xs[ix+1],zz=zs[iz+1];if(links&&x>=138)continue;
       const cx=(x+xx)/2,cz=(z+zz)/2,lie=surface(h,cx,cz),fd=fairDistance(h,cx,cz);
-      let col=lie==='green'?[.44,.66,.245]:lie==='fringe'?[.35,.55,.18]:lie==='fairway'||lie==='tee'?(Math.floor((cz+cx*.32)/9)%2===0?colors.fair1:colors.fair2):lie==='sand'?[.82,.77,.57]:colors.rough;
+      // Sand and grass share one continuous collision-aligned surface.
+      let col=lie==='green'?[.44,.66,.245]:lie==='fringe'?[.35,.55,.18]:(lie==='fairway'||lie==='tee'||lie==='sand'&&fd<fairwayWidth(h,cz))?(Math.floor((cz+cx*.32)/9)%2===0?colors.fair1:colors.fair2):colors.rough;
       if(lie==='rough'&&fd<fairwayWidth(h,cz)+3)col=[.28,.45,.17];
-      const n=lie==='green'||lie==='fringe'?0:(rand()-.5)*.025;col=col.map(v=>v+n);const p=(a,b)=>[a,land(a,b),b];m.quad(p(x,z),p(x,zz),p(xx,zz),p(xx,z),col);
+      const n=lie==='green'||lie==='fringe'?0:(rand()-.5)*.025;col=col.map(v=>v+n);const p=(a,b)=>[a,land(a,b),b];const points=[p(x,z),p(x,zz),p(xx,zz),p(xx,z)];
+      const sand= h.sand.find(s=>bunkerValue(cx,cz,s)<1);
+      if(sand){const t=bunkerValue(cx,cz,sand),shade=[.87,.79,.60].map((v,i)=>v+([.59,.50,.34][i]-v)*clamp((t-.55)/.45,0,1));col=shade;}
+      m.quad(...points,col);
     }
-    const ring=(e,width,col,lift=.05)=>{for(let i=0;i<110;i++){const a=i/110*TAU,b=(i+1)/110*TAU,p=(t,ex)=>{const x=e[0]+Math.cos(t)*(e[2]+ex),z=e[1]+Math.sin(t)*(e[3]+ex);return [x,height(h,x,z)+lift,z];};m.quad(p(a,0),p(b,0),p(b,width),p(a,width),col);}};
-    for(const s of h.sand){ring(s,.55,[.51,.49,.30]);for(let i=0;i<11;i++){const z=s[1]+(i-5)*s[3]*.12,len=s[2]*Math.sqrt(Math.max(0,1-((z-s[1])/s[3])**2))*.8;for(let x=s[0]-len;x<s[0]+len;x+=1){const p=(a,b)=>[a,height(h,a,b)+.035,b];m.quad(p(x,z),p(x+1,z),p(x+1,z+.035),p(x,z+.035),[.72,.66,.48]);}}
-      const ry=height(h,s[0]+s[2]+1,s[1]);m.tube([s[0]+s[2]+1,ry+.1,s[1]-1],[s[0]+s[2]+1,ry+.1,s[1]+1.2],.035,.025,[.46,.34,.20],6);m.box([s[0]+s[2]+1,ry+.12,s[1]-1],[.8,.06,.10],[.19,.27,.22]);}
+    for(const s of h.sand){
+      // Short, irregular rake marks remain inside the playable sand and follow its floor.
+      for(let j=-7;j<=7;j++)for(let i=-8;i<8;i++){
+        const x=s[0]+i*s[2]*.095+j*s[2]*.025,z=s[1]+j*s[3]*.105;
+        if(bunkerValue(x,z,s)>.76||bunkerValue(x+s[2]*.065,z,s)>.76)continue;
+        const p=(xx,zz)=>[xx,land(xx,zz)+.008,zz];
+        m.quad(p(x,z),p(x+s[2]*.065,z),p(x+s[2]*.065,z+s[3]*.004),p(x,z+s[3]*.004),[.73,.66,.49]);
+      }
+      const signX=s[0]+s[2]*1.11,ry=height(h,signX,s[1]);m.tube([signX,ry+.1,s[1]-1],[signX,ry+.1,s[1]+1.2],.035,.025,[.46,.34,.20],6);m.box([signX,ry+.12,s[1]-1],[.8,.06,.10],[.19,.27,.22]);
+    }
     for(const w of h.water){const wy=waterLevel(h,w);for(let z=w[1]-w[3];z<w[1]+w[3];z+=1.5)for(let x=w[0]-w[2];x<w[0]+w[2];x+=1.5){if(ellipse(x+.75,z+.75,w)>=1||![[x,z],[x,z+1.5],[x+1.5,z+1.5],[x+1.5,z]].every(([a,b])=>inWater(h,a,b)))continue;m.quad([x,wy,z],[x,wy,z+1.5],[x+1.5,wy,z+1.5],[x+1.5,wy,z],[.18,.42,.45]);}
       for(let i=0;i<40;i++){const a=rand()*TAU,x=w[0]+Math.cos(a)*(w[2]+.8),z=w[1]+Math.sin(a)*(w[3]+.8),y=height(h,x,z);if(rand()<.3)m.sphere(x,y+.23,z,.4+rand()*.4,.3,.5,[.45,.48,.40],4,7);else for(let j=0;j<3;j++)m.tube([x+j*.08,y,z],[x+j*.08+.1,y+.8+rand()*.4,z+.1],.018,.008,[.37,.39,.19],4);}}
-    // A cart path follows the outside of the fairway.
-    const path=h.centerline||h.path;for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i],len=Math.hypot(b[0]-a[0],b[1]-a[1]);for(let j=0;j<len;j+=3){const p=lerp(a,b,j/len),q=lerp(a,b,Math.min(1,(j+3)/len)),off=h.width+9;const v=(r,o)=>[r[0]+off+o,height(h,r[0]+off+o,r[1])+.045,r[1]];if(!inWater(h,p[0]+off,p[1]))m.quad(v(p,0),v(q,0),v(q,2),v(p,2),[.52,.51,.43]);}}
+    // Paving follows the same two-meter strip used by ball collision.
+    for(let z=0;z>h.pin[1];z-=.5){const zz=Math.max(h.pin[1],z-.5),x=cartPathX(h,z),xx=cartPathX(h,zz);
+      if(!onCartPath(h,(x+xx)/2+1,(z+zz)/2))continue;
+      const p=(a,b)=>[a,height(h,a,b)+.008,b];m.quad(p(x,z),p(xx,zz),p(xx+2,zz),p(x+2,z),[.52,.51,.43]);
+    }
     // Mixed trees have trunks, branches, canopies, and grounded shadows.
-    for(let i=0;i<(links?85:park?460:ridge?450:650);i++){const x=(rand()-.5)*294,z=45-rand()*(60-minZ),fd=fairDistance(h,x,z);if(fd<fairwayWidth(h,z)+7||Math.hypot(x-h.pin[0],z-h.pin[1])<h.greenRadius+10||h.water.some(w=>ellipse(x,z,w,7)<1)||h.sand.some(s=>ellipse(x,z,s,4)<1))continue;
+    for(let i=0;i<(links?85:park?460:ridge?450:650);i++){const x=(rand()-.5)*294,z=45-rand()*(60-minZ),fd=fairDistance(h,x,z);if(fd<fairwayWidth(h,z)+7||Math.hypot(x-h.pin[0],z-h.pin[1])<h.greenRadius+10||h.water.some(w=>ellipse(x,z,w,7)<1)||h.sand.some(s=>bunkerValue(x,z,s)<1.35))continue;
       const y=land(x,z),ht=8+rand()*12,rr=2.5+rand()*2.2;this.trees.push({x,z,r:.5,h:ht,y,canopy:rr});m.cone(x,y,z,.32,ht*.7,[.28,.23,.16],7,.17);
       if(rand()<(park?.86:links?.1:ridge?.15:.30)){for(let k=0;k<4;k++){const a=k*TAU/4,bx=x+Math.cos(a)*rr*.7,bz=z+Math.sin(a)*rr*.7;m.tube([x,y+ht*.42,z],[bx,y+ht*.72,bz],.14,.055,[.28,.23,.16],5);m.sphere(bx,y+ht*(.70+rand()*.08),bz,rr,ht*.19,rr,[.22+rand()*.05,.36+rand()*.07,.15],5,8);}m.sphere(x,y+ht*.91,z,rr*.8,ht*.14,rr*.8,[.25,.41,.17],5,8);}
       else{const green=[.10+rand()*.025,.26+rand()*.055,.17+rand()*.035];for(let k=0;k<5;k++)m.cone(x,y+ht*(.2+k*.13),z,rr*(1-k*.15),ht*.4,green.map(c=>c*(1+k*.035)),10);}
@@ -90,27 +104,43 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     const actor=state.actor||{x:b.x,z:b.z,angle,club:CLUBS[state.clubIndex||0],phase:'address',progress:0,power:.7};
     const dir=[Math.sin(actor.angle),0,-Math.cos(actor.angle)],right=[Math.cos(actor.angle),0,Math.sin(actor.angle)],near=Math.hypot(b.x-h.pin[0],b.z-h.pin[1])<25,watchingSwing=actor.phase==='downswing'||actor.phase==='follow'&&actor.progress<.7;let eye,center;
     if(view==='home'){const t=this.time*.035,cz=h.pin[1]*.33;eye=[45+Math.sin(t)*21,38+Math.sin(t*.8)*3,cz+70];center=[-4,5,cz-45];}
-    else if(view==='equipment'){eye=[3.0,2.7,4.2];center=[-.8,1.35,0];}
+    else if(view==='equipment'||view==='character'){eye=[3.0,2.7,4.2];center=[-.8,view==='character'&&w<760?-1.0:1.35,0];}
+    else if(view==='putting'&&!moving&&!watchingSwing){
+      const distance=Math.hypot(h.pin[0]-b.x,h.pin[1]-b.z),back=clamp(distance*.30+2.2,3,6),gy=height(h,b.x,b.z);
+      eye=[b.x-dir[0]*back+right[0]*.35,gy+2.2,b.z-dir[2]*back+right[2]*.35];center=[b.x+dir[0]*Math.min(distance,7),gy-.15,b.z+dir[2]*Math.min(distance,7)];
+    }
     else if(view==='overview'&&!watchingSwing){const cz=h.pin[1]*.48;eye=[100,Math.abs(h.pin[1])*.85+65,cz+120];center=[0,0,cz];}
     else if(moving&&!watchingSwing){const speed=Math.hypot(b.vx,b.vz),vx=speed>1?b.vx/speed:dir[0],vz=speed>1?b.vz/speed:dir[2];eye=[b.x-vx*(near?9:19),b.y+(near?5:10),b.z-vz*(near?9:19)];center=[b.x+vx*9,b.y-.2,b.z+vz*9];}
     else {const gy=height(h,actor.x,actor.z),mobile=w<760;const side=mobile?-.55:1.8,back=mobile?5.0:5.5;eye=[actor.x-dir[0]*back+right[0]*side,gy+(mobile?2.65:2.65),actor.z-dir[2]*back+right[2]*side];center=[actor.x+dir[0]*(near?4:8)-right[0]*(mobile?.55:.2),gy+(near?-.1:mobile?-.8:-.45),actor.z+dir[2]*(near?4:8)-right[2]*(mobile?.55:.2)];}
     const sm=1-Math.exp(-dt*(moving?3.2:5));this.eye=lerp(this.eye,eye,sm);this.center=lerp(this.center,center,sm);this.eye[1]=Math.max(this.eye[1],height(h,this.eye[0],this.eye[2])+1.35);
-    this.fov=55*Math.PI/180;this.aspect=w/hg;this.matrix=mult(perspective(this.fov,this.aspect,.25,2100),lookAt(this.eye,this.center));
+    const focus=actor.cinematic&&actor.phase==='downswing'?Math.sin(actor.progress*Math.PI)*5:0;this.fov=(55-focus)*Math.PI/180;this.aspect=w/hg;this.matrix=mult(perspective(this.fov,this.aspect,.25,2100),lookAt(this.eye,this.center));
     const gl=this.gl;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(this.loc.matrix,false,this.matrix);gl.uniform3fv(this.loc.eye,this.eye);gl.uniform1f(this.loc.time,this.time);this.draw(this.world);
     const m=new MeshBuilder(),px=h.pin[0],pz=h.pin[1],py=height(h,px,pz);
     // The flag moves in the current wind.
     for(let i=0;i<8;i++){const x=i*.095,q=(i+1)*.095,wave=t=>Math.sin(this.time*4-t*5)*.06*t;
       m.quad([px+x,py+2.64-x*.15,pz+wave(x)],[px+q,py+2.64-q*.15,pz+wave(q)],[px+q,py+2.13-q*.06,pz+wave(q)],[px+x,py+2.13-x*.06,pz+wave(x)],[.94,.76,.28]);}
     // The golfer is rendered in world space, with every club and limb articulated.
-    if(Math.hypot(this.eye[0]-actor.x,this.eye[2]-actor.z)<85){const human=new MeshBuilder();addGolfer(human,actor.club,actor.phase,actor.progress,actor.power,this.time);const ay=height(h,actor.x,actor.z);m.addTransformed(human,p=>[actor.x+right[0]*p[0]+dir[0]*p[2],ay+p[1],actor.z+right[2]*p[0]+dir[2]*p[2]]);
+    if(Math.hypot(this.eye[0]-actor.x,this.eye[2]-actor.z)<85){const human=new MeshBuilder();addGolfer(human,actor.club,actor.phase,actor.progress,actor.power,this.time,actor.appearance);const ay=height(h,actor.x,actor.z);m.addTransformed(human,p=>[actor.x+right[0]*p[0]+dir[0]*p[2],ay+p[1],actor.z+right[2]*p[0]+dir[2]*p[2]]);
       for(let i=0;i<24;i++){const a=i/24*TAU,q=(i+1)/24*TAU,p=t=>{const x=actor.x+right[0]*(-.8+Math.cos(t)*.48)+dir[0]*Math.sin(t)*.8,z=actor.z+right[2]*(-.8+Math.cos(t)*.48)+dir[2]*Math.sin(t)*.8;return [x,height(h,x,z)+.04,z];};m.tri([actor.x-right[0]*.8,height(h,actor.x-right[0]*.8,actor.z-right[2]*.8)+.04,actor.z-right[2]*.8],p(q),p(a),[.13,.24,.105]);}}
+    if(!this.bagAnchor||this.bagAnchor.x!==actor.x||this.bagAnchor.z!==actor.z)this.bagAnchor={x:actor.x,z:actor.z,angle:actor.angle};
+    const ba=this.bagAnchor,bag=new MeshBuilder();addBag(bag,actor.club);
+    const br=[Math.cos(ba.angle),Math.sin(ba.angle)],bd=[Math.sin(ba.angle),-Math.cos(ba.angle)],bx=ba.x-2.25*br[0]-.45*bd[0],bz=ba.z-2.25*br[1]-.45*bd[1],bagY=height(h,bx,bz);
+    m.addTransformed(bag,p=>[ba.x+br[0]*p[0]+bd[0]*p[2],bagY+p[1],ba.z+br[1]*p[0]+bd[1]*p[2]]);
     const by=height(h,b.x,b.z)+.028,shadowR=clamp(.08+(b.y-by)*.017,.08,.6);
     for(let i=0;i<18;i++){const a=i/18*TAU,c=(i+1)/18*TAU,p=t=>{const x=b.x+Math.cos(t)*shadowR,z=b.z+Math.sin(t)*shadowR;return [x,height(h,x,z)+.04,z];};m.tri([b.x,height(h,b.x,b.z)+.04,b.z],p(c),p(a),[.13,.22,.10]);}
     if(!b.holed){const eyeDist=Math.hypot(...V.sub(this.eye,[b.x,b.y,b.z])),rad=view==='overview'?.65:Math.max(BALL_RADIUS,Math.min(.18,eyeDist*.003));m.sphere(b.x,b.y+.005,b.z,rad,rad,rad,[1,1,.96],8,12);}
+    // A brief burst at the strike point celebrates perfect contact.
+    if(actor.cinematic&&actor.phase==='follow'&&actor.progress<.55){
+      const t=actor.progress/.55,scale=actor.club.type==='putter'?.38:1,ay=height(h,actor.x,actor.z)+.10;
+      for(let i=0;i<18;i++){const a=i/18*TAU,r=(.12+t*1.8)*scale,rr=r+.22*(1-t)*scale;
+        const p=q=>[actor.x+Math.cos(a)*q,ay+Math.sin(t*Math.PI)*.32*scale,actor.z+Math.sin(a)*q];
+        m.tube(p(r),p(rr),.018*(1-t),.008*(1-t),[1,.86,.46],4);
+      }
+    }
     // Short sightline replaces the old exact flight predictor in the harder game.
     if(!moving&&!b.holed&&actor.phase==='address'){const ad=[Math.sin(angle),-Math.cos(angle)],len=near?Math.min(6,Math.hypot(px-b.x,pz-b.z)):13;for(let t=.7;t<len;t+=.7){const x=b.x+ad[0]*t,z=b.z+ad[1]*t,xx=b.x+ad[0]*(t+.38),zz=b.z+ad[1]*(t+.38);m.tube([x,height(h,x,z)+.07,z],[xx,height(h,xx,zz)+.07,zz],.015,.015,[.84,.94,.59],4);}}
-    // Stable slope arrows avoid the old dots snapping back every animation cycle.
-    if(state.greenGrid&&!moving){const r=h.greenRadius;for(let x=px-r+1;x<px+r-1;x+=2.4)for(let z=pz-r+1;z<pz+r-1;z+=2.4){if(Math.hypot(x-px,z-pz)>r-1.3||surface(h,x,z)!=='green')continue;const [gx,gz]=greenGradient(h,x,z),l=Math.hypot(gx,gz);if(l<.002)continue;const dx=-gx/l,dz=-gz/l,len=.55,p=(a,b)=>[a,height(h,a,b)+.09,b],end=[x+dx*len,z+dz*len];m.tube(p(x,z),p(...end),.012,.012,[.66,.80,.42],5);for(const side of[-1,1])m.tube(p(...end),p(end[0]-dx*.19+dz*side*.13,end[1]-dz*.19-dx*side*.13),.012,.010,[.66,.80,.42],5);}}
+    // Dots travel downhill with slope-scaled speed, shrinking at loop boundaries to avoid popping.
+    if(state.greenGrid&&!moving){const r=h.greenRadius;for(let x=px-r+1;x<px+r-1;x+=1.8)for(let z=pz-r+1;z<pz+r-1;z+=1.8){if(Math.hypot(x-px,z-pz)>r-1.4||surface(h,x,z)!=='green')continue;const [gx,gz]=greenGradient(h,x,z),l=Math.hypot(gx,gz);if(l<.002)continue;const dx=-gx/l,dz=-gz/l,p=(a,b)=>[a,height(h,a,b)+.10,b];m.tube(p(x-dx*.42,z-dz*.42),p(x+dx*.42,z+dz*.42),.012,.012,[.67,.82,.45],4);const phase=(this.time*(.22+Math.min(l,.12)*9)+x*.137+z*.173)%1,t=phase<0?phase+1:phase,offset=(t-.5)*.84,rad=.035*Math.min(1,t*8,(1-t)*8),xx=x+dx*offset,zz=z+dz*offset;m.sphere(xx,height(h,xx,zz)+.125,zz,rad,rad*.65,rad,l>.045?[1,.72,.30]:[.94,.98,.70],5,8);}}
     if(state.trail?.length>1)for(let i=1;i<state.trail.length;i++){const a=state.trail[i-1],c=state.trail[i];m.tube([a.x,a.y,a.z],[c.x,c.y,c.z],.018,.014,[.90,.95,.77],4);}
     // Small pieces of turf follow the club at contact.
     if(actor.phase==='follow'&&actor.club.type!=='putter'&&actor.progress<.8){for(let i=0;i<12;i++){const t=actor.progress,dx=(i%3-1)*.14*t,dz=(.7+i*.12)*t,x=actor.x+right[0]*dx+dir[0]*dz,z=actor.z+right[2]*dx+dir[2]*dz;const y=height(h,actor.x,actor.z)+Math.max(.04,(.8+i*.06)*t-1.8*t*t);m.sphere(x,y,z,.027,.016,.04,surface(h,actor.x,actor.z)==='sand'?[.79,.71,.51]:[.31,.40,.15],3,4);}}

@@ -1,0 +1,15 @@
+Review notes for revision 6. Verify these steps on the final uploaded build before submission.
+
+This revision opens a native SwiftUI clubhouse with course selection, equipment upgrades, statistics and settings. The game engine and eight courses are bundled inside the application. Device career gameplay and practice do not require a website connection or an account.
+
+Suggested review steps:
+1. Launch without internet. In Courses, choose a course and start a round.
+2. Return to Clubhouse and try Driving range and Putting green. Practice does not change career records.
+3. Finish a hole, then open Equipment to see tokens and exact distance, forgiveness and spin comparisons for each upgrade. Purchases require tokens earned from play.
+4. Open Stats to see fairways, greens, putts per hole and best full rounds.
+5. Close and reopen between shots, then choose Resume saved round. Device saves include current hole, strokes and ball position. An interrupted in-flight shot resumes from the previous saved position.
+6. A paired extended controller supports aiming, swings, clubs, slope dots and camera. Settings lists the controls. Supported iPhones provide native impact and hole completion feedback.
+
+Settings > Online career retains access to existing website accounts. This optional mode requires internet. Its progress is separate from the default device career. There is no automatic synchronization.
+
+No account or credentials are needed for the default offline experience. Challenge courses open sequentially by scoring 90 or lower over 18 holes, beginning at Atlantic Links.

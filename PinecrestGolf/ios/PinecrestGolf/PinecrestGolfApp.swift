@@ -4,7 +4,7 @@ import SwiftUI
 struct PinecrestGolfApp: App {
     var body: some Scene {
         WindowGroup {
-            GolfView()
+            NativeGolfView()
                 .background(Color(red: 0.09, green: 0.18, blue: 0.15))
                 .preferredColorScheme(.dark)
         }

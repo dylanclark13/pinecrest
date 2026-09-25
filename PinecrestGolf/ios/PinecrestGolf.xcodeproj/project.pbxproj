@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+A10000000000000000000002 = {isa = PBXBuildFile; fileRef = A10000000000000000000001; };
+A10000000000000000000004 = {isa = PBXBuildFile; fileRef = A10000000000000000000003; };
 		414D458A4445833FCC3E9669 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 6D123AE8AB04EEE632CC6C18 /* PrivacyInfo.xcprivacy */; };
 		4B22036E1DD5F62EE6C58D47 /* PinecrestGolfApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3E9186A4C0DBC59A012CCF4 /* PinecrestGolfApp.swift */; };
 		6FE0BBEC37407380D400F491 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 795A02A63DC9C1E86758E98F /* Assets.xcassets */; };
@@ -14,6 +16,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+A10000000000000000000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeGolf.swift; sourceTree = "<group>"; };
+A10000000000000000000003 = {isa = PBXFileReference; lastKnownFileType = folder; path = Game; sourceTree = "<group>"; };
 		22AC8B64618616799FA07532 /* GolfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GolfView.swift; sourceTree = "<group>"; };
 		6D123AE8AB04EEE632CC6C18 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		795A02A63DC9C1E86758E98F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -52,7 +56,9 @@
 		E17E80AD8E2103CF3FC3FD96 /* PinecrestGolf */ = {
 			isa = PBXGroup;
 			children = (
-				F3E9186A4C0DBC59A012CCF4 /* PinecrestGolfApp.swift */,
+				A10000000000000000000001 /* NativeGolf.swift */,
+A10000000000000000000003 /* Game */,
+F3E9186A4C0DBC59A012CCF4 /* PinecrestGolfApp.swift */,
 				22AC8B64618616799FA07532 /* GolfView.swift */,
 				9AC3B5AD93CBC0305C62F78F /* Info.plist */,
 				6D123AE8AB04EEE632CC6C18 /* PrivacyInfo.xcprivacy */,
@@ -118,7 +124,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				414D458A4445833FCC3E9669 /* PrivacyInfo.xcprivacy in Resources */,
+				A10000000000000000000004 /* Game in Resources */,
+414D458A4445833FCC3E9669 /* PrivacyInfo.xcprivacy in Resources */,
 				6FE0BBEC37407380D400F491 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -130,7 +137,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4B22036E1DD5F62EE6C58D47 /* PinecrestGolfApp.swift in Sources */,
+				A10000000000000000000002 /* NativeGolf.swift in Sources */,
+4B22036E1DD5F62EE6C58D47 /* PinecrestGolfApp.swift in Sources */,
 				C95176BFBFD370CBB96BC1CD /* GolfView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -159,7 +167,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = PinecrestGolf/Mac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				DEVELOPMENT_TEAM = QZSCX248DS;
 				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;
@@ -199,7 +207,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				"CODE_SIGN_ENTITLEMENTS[sdk=macosx*]" = PinecrestGolf/Mac.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 6;
 				DERIVE_MACCATALYST_PRODUCT_BUNDLE_IDENTIFIER = NO;
 				DEVELOPMENT_TEAM = QZSCX248DS;
 				"ENABLE_HARDENED_RUNTIME[sdk=macosx*]" = YES;

@@ -43,16 +43,22 @@ export function seeded(seed){return()=>{seed=(seed*1664525+1013904223)>>>0;retur
 export function lineDistance(x,z,a,b){const dx=b[0]-a[0],dz=b[1]-a[1],den=dx*dx+dz*dz;const t=den?clamp(((x-a[0])*dx+(z-a[1])*dz)/den,0,1):0;return Math.hypot(x-a[0]-dx*t,z-a[1]-dz*t);}
 export function fairDistance(h,x,z){let d=Infinity;const path=h.centerline||h.path;for(let i=1;i<path.length;i++)d=Math.min(d,lineDistance(x,z,path[i-1],path[i]));return d;}
 export function ellipse(x,z,e,extra=0){return ((x-e[0])/(e[2]+extra))**2+((z-e[1])/(e[3]+extra))**2;}
+// Use one outline for the rendered sand, the lie check, and the bunker floor.
+export function bunkerRadius(s,a){const phase=s[0]*.13+s[1]*.031;return .95+.035*Math.sin(3*a+phase)+.022*Math.sin(5*a-phase*.7)+.012*Math.sin(8*a+phase*2);}
+export function bunkerValue(x,z,s){const dx=(x-s[0])/s[2],dz=(z-s[1])/s[3],a=Math.atan2(dz,dx);return Math.hypot(dx,dz)/bunkerRadius(s,a);}
 export function inWater(h,x,z){return h.water.some(e=>ellipse(x,z,e)<1)&&!(h.island&&Math.hypot(x-h.pin[0],z-h.pin[1])<h.greenRadius+5);}
 export function fairwayWidth(h,z){return h.width*(1+.105*Math.sin(z*.028+h.seed*.12)+.045*Math.sin(z*.071));}
+export function cartPathX(h,z){const path=h.centerline||h.path;for(let i=1;i<path.length;i++){const a=path[i-1],b=path[i];if(z<=Math.max(a[1],b[1])&&z>=Math.min(a[1],b[1]))return a[0]+(b[0]-a[0])*(z-a[1])/(b[1]-a[1])+h.width+9;}return Infinity;}
+export function onCartPath(h,x,z){const left=cartPathX(h,z);return x>=left&&x<=left+2&&!inWater(h,x,z)&&!h.sand.some(s=>bunkerValue(x,z,s)<1)&&Math.hypot(x-h.pin[0],z-h.pin[1])>h.greenRadius+2;}
 export function surface(h,x,z){
   if(Math.abs(x)>113||z>43||z<h.pin[1]-62)return 'out';
   if(Math.abs(x)<4&&Math.abs(z)<6)return 'tee';
   if(inWater(h,x,z))return 'water';
-  if(h.sand.some(e=>ellipse(x,z,e)<1))return 'sand';
+  if(h.sand.some(e=>bunkerValue(x,z,e)<1))return 'sand';
   const g=Math.hypot(x-h.pin[0],z-h.pin[1]);
   if(g<(h.greenRadius||14))return 'green';
   if(g<(h.greenRadius||14)+2)return 'fringe';
+  if(onCartPath(h,x,z))return 'path';
   if(fairDistance(h,x,z)<fairwayWidth(h,z))return 'fairway';
   return 'rough';
 }
@@ -64,7 +70,7 @@ export function height(h,x,z){
   const blend=clamp((g-r)/8,0,1);let y=green*(1-blend)+base*blend;
   const tee=clamp((Math.hypot(x,z)-5)/9,0,1);y=y*tee+.6*(1-tee);
   for(const w of h.water){const e=ellipse(x,z,w);if(e<1.12&&!(h.island&&g<r+5)){const level=waterLevel(h,w);const blend=clamp((1.12-e)/.12,0,1);y=y*(1-blend)+(level-.12-.6*Math.max(0,1-e))*blend;}}
-  for(const s of h.sand){const e=ellipse(x,z,s);if(e<1)y-=.6*(1-e);}
+  for(const s of h.sand){const d=bunkerValue(x,z,s);if(d<1){const bowl=1-d*d;y-=(h.biome==='links'?1.15:h.biome==='park'?.58:.84)*bowl*bowl;}}
   return y;
 }
 export function greenGradient(h,x,z){return [(height(h,x+.1,z)-height(h,x-.1,z))/.2,(height(h,x,z+.1)-height(h,x,z-.1))/.2];}
@@ -86,10 +92,10 @@ export function stepBall(b,h,dt){
     b.vy-=(9.81+b.vy*sp*.0018)*dt;b.x+=b.vx*dt;b.z+=b.vz*dt;b.y+=b.vy*dt;
     const g=height(h,b.x,b.z)+BALL_RADIUS;
     if(b.y<=g){b.y=g;const lie=surface(h,b.x,b.z);if(lie==='water'||lie==='out'){b.moving=false;return lie;}
-      const back=b.backSpin||0,bounce=(lie==='sand'?.065:lie==='rough'?.10:.23)*(1-Math.max(0,back)*.35);b.vy=-b.vy*bounce;const speed=Math.hypot(b.vx,b.vz)||1,dx=b.vx/speed,dz=b.vz/speed;const retention=(lie==='sand'?.25:lie==='rough'?.30:Math.max(.25,.46-(b.loft||0)*.003))*(1-back*.60);b.vx*=retention;b.vz*=retention;if(!b.landed&&b.loft>=36&&back>.5&&(lie==='green'||lie==='fairway')){const check=back*(lie==='green'?3.3:1.3);b.vx-=dx*check;b.vz-=dz*check;}b.backSpin=back*.2;b.landed=true;if(b.vy<.8){b.vy=0;b.airborne=false;}event='bounce';}
+      const back=b.backSpin||0,bounce=(lie==='path'?.72:lie==='sand'?.065:lie==='rough'?.10:.23)*(1-Math.max(0,back)*.35);b.vy=-b.vy*bounce;const speed=Math.hypot(b.vx,b.vz)||1,dx=b.vx/speed,dz=b.vz/speed;const retention=(lie==='path'?.88:lie==='sand'?.25:lie==='rough'?.30:Math.max(.25,.46-(b.loft||0)*.003))*(1-back*.60);b.vx*=retention;b.vz*=retention;if(!b.landed&&b.loft>=36&&back>.5&&(lie==='green'||lie==='fairway')){const check=back*(lie==='green'?3.3:1.3);b.vx-=dx*check;b.vz-=dz*check;}b.backSpin=back*.2;b.landed=true;if(b.vy<.8){b.vy=0;b.airborne=false;}event='bounce';}
   } else {
     const lie=surface(h,b.x,b.z);if(lie==='water'||lie==='out'){b.moving=false;return lie;}
-    const friction=lie==='green'?(h.greenFriction??.52):lie==='fringe'?.95:lie==='rough'?3.2:lie==='sand'?5:1.35;
+    const friction=lie==='green'?(h.greenFriction??.52):lie==='fringe'?.95:lie==='rough'?3.2:lie==='sand'?5:lie==='path'?.40:1.35;
     const [gx,gz]=greenGradient(h,b.x,b.z);b.vx-=gx*9.81*dt;b.vz-=gz*9.81*dt;
     const sp=Math.hypot(b.vx,b.vz),v=Math.max(0,sp-friction*dt);if(sp>0){b.vx*=v/sp;b.vz*=v/sp;}
     b.x+=b.vx*dt;b.z+=b.vz*dt;b.y=height(h,b.x,b.z)+BALL_RADIUS;
