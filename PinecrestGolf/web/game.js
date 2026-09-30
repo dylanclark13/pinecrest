@@ -286,7 +286,7 @@ function renderKeeperUI(){
  for(let i=0;i<KEEPER_TOOLS.length;i++)$('keeperTool'+i).setAttribute('aria-pressed',String(keeper.tool===i));
 }
 function updateKeeper(dt){
- if(!keeperRenderer&&!keeperRenderFailed)try{keeperRenderer=new GolfRenderer($('keeperCanvas'));keeperRenderer.loadHole(COURSES[0].holes[0]);}catch(e){keeperRenderFailed=true;$('keeperRenderError').hidden=false;$('keeperStart').disabled=true;}
+ if(!keeperRenderer&&!keeperRenderFailed)try{keeperRenderer=new GolfRenderer($('keeperCanvas'));}catch(e){keeperRenderFailed=true;$('keeperRenderError').hidden=false;$('keeperStart').disabled=true;}
  keeper.update(dt);renderKeeperUI();if(!keeperRenderer)return;
  const h=COURSES[0].holes[0];keeperRenderer.render({hole:h,ball:makeBall(h),angle:0,view:'greenskeeper',moving:false,trail:[],power:0,clubIndex:PUTTER_INDEX,keeper:{elapsed:keeper.effect,tool:keeper.effectTool,reduced:window.matchMedia('(prefers-reduced-motion: reduce)').matches},actor:{x:0,z:0,angle:0,club:CLUBS[PUTTER_INDEX],appearance:{skin:1,shirt:5,pants:2,cap:3,hat:true},phase:'follow',progress:1,power:.4}},dt);
 }

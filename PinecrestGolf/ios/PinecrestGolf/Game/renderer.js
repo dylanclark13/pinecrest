@@ -1,3 +1,4 @@
+import {addOffice,addSeatedKeeper,addKeeperTool} from './keeper-office.js';
 import {height,surface,fairDistance,fairwayWidth,ellipse,bunkerValue,bunkerRadius,seeded,clamp,CLUBS,BALL_RADIUS,CUP_RADIUS,waterLevel,inWater,greenGradient,onCartPath,cartPathX} from './physics.js';
 import {addGolfer,addBag} from './golfer.js';
 const TAU=Math.PI*2;
@@ -98,7 +99,17 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     if(this.world)this.gl.deleteBuffer(this.world.buffer);this.world=this.buffer(m.a);this.eye=[2,3.3,6];this.center=[0,1,-20];this.grassKey='';if(this.grass){this.gl.deleteBuffer(this.grass.buffer);this.grass=null;}
   }
   draw(mesh){const gl=this.gl;gl.bindBuffer(gl.ARRAY_BUFFER,mesh.buffer);for(const [k,offset]of[['pos',0],['normal',12],['color',24]]){gl.enableVertexAttribArray(this.loc[k]);gl.vertexAttribPointer(this.loc[k],3,gl.FLOAT,false,36,offset);}gl.drawArrays(gl.TRIANGLES,0,mesh.count);}
+  renderOffice(state,dt){
+    this.time+=dt;const w=Math.max(1,this.canvas.clientWidth),h=Math.max(1,this.canvas.clientHeight),dpr=Math.min(globalThis.devicePixelRatio||1,1.6);
+    if(this.canvas.width!==Math.round(w*dpr)||this.canvas.height!==Math.round(h*dpr)){this.canvas.width=Math.round(w*dpr);this.canvas.height=Math.round(h*dpr);}
+    this.eye=[1.35,1.88,w/h<1.2?4.1:3.25];this.center=[0,1.02,-.35];this.fov=46*Math.PI/180;this.aspect=w/h;
+    this.matrix=mult(perspective(this.fov,this.aspect,.08,40),lookAt(this.eye,this.center));
+    const gl=this.gl;gl.viewport(0,0,this.canvas.width,this.canvas.height);gl.clearColor(.18,.23,.19,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.useProgram(this.program);gl.uniformMatrix4fv(this.loc.matrix,false,this.matrix);gl.uniform3fv(this.loc.eye,this.eye);gl.uniform1f(this.loc.time,this.time);
+    if(!this.office){const room=new MeshBuilder();addOffice(room);this.office=this.buffer(room.a);}
+    this.draw(this.office);const m=new MeshBuilder();addSeatedKeeper(m,this.time,state.keeper);addKeeperTool(m,this.time,state.keeper);this.setData(this.dynamic,m.a);this.draw(this.dynamic);
+  }
   render(state,dt){
+    if(state.view==='greenskeeper'&&state.keeper){this.renderOffice(state,dt);return;}
     this.time+=dt;const {ball:b,hole:h,angle,view,moving,trajectory}=state,w=this.canvas.clientWidth,hg=this.canvas.clientHeight,dpr=Math.min(globalThis.devicePixelRatio||1,1.6);
     if(this.canvas.width!==Math.round(w*dpr)||this.canvas.height!==Math.round(hg*dpr)){this.canvas.width=Math.round(w*dpr);this.canvas.height=Math.round(hg*dpr);}
     const actor=state.actor||{x:b.x,z:b.z,angle,club:CLUBS[state.clubIndex||0],phase:'address',progress:0,power:.7};
@@ -123,18 +134,6 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     // The golfer is rendered in world space, with every club and limb articulated.
     if(Math.hypot(this.eye[0]-actor.x,this.eye[2]-actor.z)<85){const human=new MeshBuilder();addGolfer(human,actor.club,actor.phase,actor.progress,actor.power,this.time,actor.appearance);const ay=height(h,actor.x,actor.z);const k=state.keeper,hit=k&&!k.reduced?Math.max(0,1-k.elapsed/1.1):0,tilt=hit>0?hit*Math.sin(k.elapsed*17)*(k.tool==='shovel'?.45:.23):0;m.addTransformed(human,p=>{const x=p[0]*Math.cos(tilt)-p[1]*Math.sin(tilt),y=p[0]*Math.sin(tilt)+p[1]*Math.cos(tilt);return [actor.x+right[0]*x+dir[0]*p[2],ay+y+hit*Math.abs(Math.sin((k?.elapsed||0)*8))*.3,actor.z+right[2]*x+dir[2]*p[2]];});
       for(let i=0;i<24;i++){const a=i/24*TAU,q=(i+1)/24*TAU,p=t=>{const x=actor.x+right[0]*(-.8+Math.cos(t)*.48)+dir[0]*Math.sin(t)*.8,z=actor.z+right[2]*(-.8+Math.cos(t)*.48)+dir[2]*Math.sin(t)*.8;return [x,height(h,x,z)+.04,z];};m.tri([actor.x-right[0]*.8,height(h,actor.x-right[0]*.8,actor.z-right[2]*.8)+.04,actor.z-right[2]*.8],p(q),p(a),[.13,.24,.105]);}}
-    if(state.keeper){const k=state.keeper,t=k.elapsed,gy=height(h,0,0),a=k.reduced?0:Math.sin(Math.min(1,t/.4)*Math.PI),head=[.85-a*1.45,gy+1.4,1-a*.7],handle=[1.25,gy+.25,1.2];
-      if(k.tool==='fist'||k.tool==='hand'){
-        const palm=k.tool==='fist'?[.22,.18,.20]:[.20,.27,.075],skin=[.84,.62,.43],glove=[.88,.91,.85];
-        const handPos=k.tool==='hand'?[.9-a*1.7,gy+1.65,1-a*.7]:[.1,gy+1.45,1.25-a*1.15];
-        m.tube([handPos[0]+.18,gy+.6,1.5],handPos,.10,.12,skin,10);m.box(handPos,palm,glove);
-        if(k.tool==='fist'){for(let i=0;i<4;i++)m.sphere(handPos[0]-.075+i*.05,handPos[1]+.07,handPos[2]-.08,.03,.035,.045,glove,4,6);}
-        else{for(let i=0;i<4;i++){const x=handPos[0]-.075+i*.05;m.tube([x,handPos[1]+.10,handPos[2]],[x+(i-1.5)*.012,handPos[1]+.25-Math.abs(i-1.5)*.018,handPos[2]],.023,.018,glove,6);}m.tube([handPos[0]+.10,handPos[1],handPos[2]],[handPos[0]+.20,handPos[1]+.10,handPos[2]],.03,.022,glove,6);}
-      }
-      else if(k.tool==='hose'){m.tube(handle,head,.07,.07,[.15,.45,.24],8);if(t<.55)for(let i=0;i<18;i++){const f=i/18,x=head[0]+(-.8-head[0])*f,y=head[1]+.15*Math.sin(f*Math.PI),z=head[2]*(1-f);m.sphere(x,y,z,.045,.045,.045,[.40,.76,.95],4,6);}}
-      else{m.tube(handle,head,.035,.045,[.58,.40,.19],8);if(k.tool==='mallet')m.box(head,[.55,.30,.30],[.79,.35,.23]);else if(k.tool==='shovel')m.box(head,[.32,.40,.055],[.60,.67,.68]);else{m.tube([head[0]-.30,head[1],head[2]],[head[0]+.30,head[1],head[2]],.035,.035,[.52,.60,.54],6);for(let i=0;i<7;i++)m.tube([head[0]-.30+i*.1,head[1],head[2]],[head[0]-.30+i*.1,head[1]-.15,head[2]+.05],.015,.015,[.52,.60,.54],5);}}
-      if(t<1.1)for(let i=0;i<6;i++){const q=i*TAU/6+(k.reduced?0:this.time*2),r=.35+t*.35;m.sphere(-.8+Math.cos(q)*r,gy+2.25+Math.sin(q*2)*.12,-Math.sin(q)*r,.055,.055,.055,k.tool==='hose'?[.35,.75,1]:[1,.83,.23],4,6);}
-    }
     if(!this.bagAnchor||this.bagAnchor.x!==actor.x||this.bagAnchor.z!==actor.z)this.bagAnchor={x:actor.x,z:actor.z,angle:actor.angle};
     const ba=this.bagAnchor,bag=new MeshBuilder();addBag(bag,actor.club);
     const br=[Math.cos(ba.angle),Math.sin(ba.angle)],bd=[Math.sin(ba.angle),-Math.cos(ba.angle)],bx=ba.x-2.25*br[0]-.45*bd[0],bz=ba.z-2.25*br[1]-.45*bd[1],bagY=height(h,bx,bz);
