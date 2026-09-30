@@ -1,3 +1,4 @@
+import {GreenskeeperGame,KEEPER_TOOLS} from '../web/greenskeeper.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -14,7 +15,7 @@ const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Elem
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
 class Renderer{constructor(){this.eye=[2,3,6];this.center=[0,0,0];this.trees=[]}loadHole(h){this.h=h}render(state){assert(state.hole);assert(Number.isFinite(state.ball.x));renderCalls++}pointOnCourse(){return null}}
-const context=vm.createContext({...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
+const context=vm.createContext({GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
 const source=fs.readFileSync(new URL('../web/game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');vm.runInContext(source,context);
 await new Promise(r=>setImmediate(r));const run=s=>vm.runInContext(s,context);
 run("for(const el of document.querySelectorAll('dialog[open]'))el.close()");for(const e of elements.values())e.close();
@@ -36,3 +37,4 @@ await elements.get('startDaily').onclick();assert.equal(run('roundMode'),'daily'
 await run('loadStats()');assert(elements.get('personalStats').innerHTML.includes('Putts per hole'));
 run('renderEquipment()');assert(elements.get('equipmentChoices').innerHTML.includes('percentage points'));assert(elements.get('equipmentChoices').innerHTML.includes('Timing window grows'));
 console.log('PASS complete DOM wiring, practice isolation/restoration, putting setup, replay without gameplay mutation, daily entry, stats and upgrade comparisons.');
+const golfBefore=run('JSON.stringify({roundId,scores,strokes,ball,career})');run("setHomeTab('greenskeeper');keeper.start();keeper.strike();updateKeeper(.016)");assert.equal(elements.get('homeGreenskeeper').hidden,false);assert.equal(run('JSON.stringify({roundId,scores,strokes,ball,career})'),golfBefore);run("setHomeTab('play')");assert.equal(elements.get('homeGreenskeeper').hidden,true);console.log('PASS Greenskeeper tab visibility, renderer wiring and golf career isolation.');

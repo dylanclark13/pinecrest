@@ -13,3 +13,5 @@ Suggested review steps:
 Settings > Online career retains access to existing website accounts. This optional mode requires internet. Its progress is separate from the default device career. There is no automatic synchronization.
 
 No account or credentials are needed for the default offline experience. Challenge courses open sequentially by scoring 90 or lower over 18 holes, beginning at Atlantic Links.
+
+Added clubhouse arcade: Greenskeeper chaos, accessible from the native Courses menu and the bundled clubhouse tab. This is a cartoon slapstick minigame with punches, open hand slaps, a rake, rubber mallet, shovel and water hose. Characters bounce back without blood or injuries. Review the App Store age rating questionnaire to reflect the added cartoon violence before submitting this revision. Arcade scores do not award golf tokens or change course records.

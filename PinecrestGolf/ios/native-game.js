@@ -31,6 +31,7 @@ window.pinecrestNative=async(action,value)=>{
  else if(action==='resume'){if(practice)leavePractice();if(!hasRound&&!savedRound)throw Error('Start a round first.');resumeSavedRound();}
  else if(action==='range'||action==='putting'){startPractice(action==='range'?'range':'putting');}
  else if(action==='daily'){const data=await api('/api/daily',{});if(practice)leavePractice();career=data.profile;savedRound=data.round;applyRound(data.round);}
+ else if(action==='greenskeeper'){showCourses();setHomeTab('greenskeeper');}
  else if(action==='character'){showCourses();setHomeTab('character');}
  else if(action==='tutorial')showOnboarding();
  else return;

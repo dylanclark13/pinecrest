@@ -104,6 +104,7 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     const actor=state.actor||{x:b.x,z:b.z,angle,club:CLUBS[state.clubIndex||0],phase:'address',progress:0,power:.7};
     const dir=[Math.sin(actor.angle),0,-Math.cos(actor.angle)],right=[Math.cos(actor.angle),0,Math.sin(actor.angle)],near=Math.hypot(b.x-h.pin[0],b.z-h.pin[1])<25,watchingSwing=actor.phase==='downswing'||actor.phase==='follow'&&actor.progress<.7;let eye,center;
     if(view==='home'){const t=this.time*.035,cz=h.pin[1]*.33;eye=[45+Math.sin(t)*21,38+Math.sin(t*.8)*3,cz+70];center=[-4,5,cz-45];}
+    else if(view==='greenskeeper'){const y=height(h,actor.x,actor.z);eye=[2.6,y+2.3,4.6];center=[-.65,y+1.2,0];}
     else if(view==='equipment'||view==='character'){eye=[3.0,2.7,4.2];center=[-.8,view==='character'&&w<760?-1.0:1.35,0];}
     else if(view==='putting'&&!moving&&!watchingSwing){
       const distance=Math.hypot(h.pin[0]-b.x,h.pin[1]-b.z),back=clamp(distance*.30+2.2,3,6),gy=height(h,b.x,b.z);
@@ -120,8 +121,20 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     for(let i=0;i<8;i++){const x=i*.095,q=(i+1)*.095,wave=t=>Math.sin(this.time*4-t*5)*.06*t;
       m.quad([px+x,py+2.64-x*.15,pz+wave(x)],[px+q,py+2.64-q*.15,pz+wave(q)],[px+q,py+2.13-q*.06,pz+wave(q)],[px+x,py+2.13-x*.06,pz+wave(x)],[.94,.76,.28]);}
     // The golfer is rendered in world space, with every club and limb articulated.
-    if(Math.hypot(this.eye[0]-actor.x,this.eye[2]-actor.z)<85){const human=new MeshBuilder();addGolfer(human,actor.club,actor.phase,actor.progress,actor.power,this.time,actor.appearance);const ay=height(h,actor.x,actor.z);m.addTransformed(human,p=>[actor.x+right[0]*p[0]+dir[0]*p[2],ay+p[1],actor.z+right[2]*p[0]+dir[2]*p[2]]);
+    if(Math.hypot(this.eye[0]-actor.x,this.eye[2]-actor.z)<85){const human=new MeshBuilder();addGolfer(human,actor.club,actor.phase,actor.progress,actor.power,this.time,actor.appearance);const ay=height(h,actor.x,actor.z);const k=state.keeper,hit=k&&!k.reduced?Math.max(0,1-k.elapsed/1.1):0,tilt=hit*Math.sin(k.elapsed*17)*(k.tool==='shovel'?.45:.23);m.addTransformed(human,p=>{const x=p[0]*Math.cos(tilt)-p[1]*Math.sin(tilt),y=p[0]*Math.sin(tilt)+p[1]*Math.cos(tilt);return [actor.x+right[0]*x+dir[0]*p[2],ay+y+hit*Math.abs(Math.sin((k?.elapsed||0)*8))*.3,actor.z+right[2]*x+dir[2]*p[2]];});
       for(let i=0;i<24;i++){const a=i/24*TAU,q=(i+1)/24*TAU,p=t=>{const x=actor.x+right[0]*(-.8+Math.cos(t)*.48)+dir[0]*Math.sin(t)*.8,z=actor.z+right[2]*(-.8+Math.cos(t)*.48)+dir[2]*Math.sin(t)*.8;return [x,height(h,x,z)+.04,z];};m.tri([actor.x-right[0]*.8,height(h,actor.x-right[0]*.8,actor.z-right[2]*.8)+.04,actor.z-right[2]*.8],p(q),p(a),[.13,.24,.105]);}}
+    if(state.keeper){const k=state.keeper,t=k.elapsed,gy=height(h,0,0),a=k.reduced?0:Math.sin(Math.min(1,t/.4)*Math.PI),head=[.85-a*1.45,gy+1.4,1-a*.7],handle=[1.25,gy+.25,1.2];
+      if(k.tool==='fist'||k.tool==='hand'){
+        const palm=k.tool==='fist'?[.22,.18,.20]:[.20,.27,.075],skin=[.84,.62,.43],glove=[.88,.91,.85];
+        const handPos=k.tool==='hand'?[.9-a*1.7,gy+1.65,1-a*.7]:[.1,gy+1.45,1.25-a*1.15];
+        m.tube([handPos[0]+.18,gy+.6,1.5],handPos,.10,.12,skin,10);m.box(handPos,palm,glove);
+        if(k.tool==='fist'){for(let i=0;i<4;i++)m.sphere(handPos[0]-.075+i*.05,handPos[1]+.07,handPos[2]-.08,.03,.035,.045,glove,4,6);}
+        else{for(let i=0;i<4;i++){const x=handPos[0]-.075+i*.05;m.tube([x,handPos[1]+.10,handPos[2]],[x+(i-1.5)*.012,handPos[1]+.25-Math.abs(i-1.5)*.018,handPos[2]],.023,.018,glove,6);}m.tube([handPos[0]+.10,handPos[1],handPos[2]],[handPos[0]+.20,handPos[1]+.10,handPos[2]],.03,.022,glove,6);}
+      }
+      else if(k.tool==='hose'){m.tube(handle,head,.07,.07,[.15,.45,.24],8);if(t<.55)for(let i=0;i<18;i++){const f=i/18,x=head[0]+(-.8-head[0])*f,y=head[1]+.15*Math.sin(f*Math.PI),z=head[2]*(1-f);m.sphere(x,y,z,.045,.045,.045,[.40,.76,.95],4,6);}}
+      else{m.tube(handle,head,.035,.045,[.58,.40,.19],8);if(k.tool==='mallet')m.box(head,[.55,.30,.30],[.79,.35,.23]);else if(k.tool==='shovel')m.box(head,[.32,.40,.055],[.60,.67,.68]);else{m.tube([head[0]-.30,head[1],head[2]],[head[0]+.30,head[1],head[2]],.035,.035,[.52,.60,.54],6);for(let i=0;i<7;i++)m.tube([head[0]-.30+i*.1,head[1],head[2]],[head[0]-.30+i*.1,head[1]-.15,head[2]+.05],.015,.015,[.52,.60,.54],5);}}
+      if(t<1.1)for(let i=0;i<6;i++){const q=i*TAU/6+(k.reduced?0:this.time*2),r=.35+t*.35;m.sphere(-.8+Math.cos(q)*r,gy+2.25+Math.sin(q*2)*.12,-Math.sin(q)*r,.055,.055,.055,k.tool==='hose'?[.35,.75,1]:[1,.83,.23],4,6);}
+    }
     if(!this.bagAnchor||this.bagAnchor.x!==actor.x||this.bagAnchor.z!==actor.z)this.bagAnchor={x:actor.x,z:actor.z,angle:actor.angle};
     const ba=this.bagAnchor,bag=new MeshBuilder();addBag(bag,actor.club);
     const br=[Math.cos(ba.angle),Math.sin(ba.angle)],bd=[Math.sin(ba.angle),-Math.cos(ba.angle)],bx=ba.x-2.25*br[0]-.45*bd[0],bz=ba.z-2.25*br[1]-.45*bd[1],bagY=height(h,bx,bz);

@@ -248,6 +248,7 @@ struct NativeClubhouse: View {
             Button("Driving range") { game.send("range") }
             Button("Putting green") { game.send("putting") }
         }
+        Section("Clubhouse arcade") { Button("Greenskeeper chaos") { game.send("greenskeeper") } }
         Section("Courses") {
             ForEach(s.courses) { c in
                 Button {

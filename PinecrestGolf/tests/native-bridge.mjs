@@ -1,3 +1,4 @@
+import {GreenskeeperGame,KEEPER_TOOLS} from '../web/greenskeeper.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
@@ -14,7 +15,7 @@ const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Elem
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
 class Renderer{constructor(){this.eye=[2,3,6];this.center=[0,0,0];this.trees=[]}loadHole(h){this.h=h}render(state){assert(state.hole);assert(Number.isFinite(state.ball.x));renderCalls++}pointOnCourse(){return null}}
-const context=vm.createContext({...physics,...courses,...progression,...character,...challenges,console,document,window:{...window,dispatchEvent:noop,addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setInterval:()=>1,setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:nativeFetch});
+const context=vm.createContext({GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{...window,dispatchEvent:noop,addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setInterval:()=>1,setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:nativeFetch});
 const source=fs.readFileSync(new URL('../ios/PinecrestGolf/Game/game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');vm.runInContext(source,context);
 
 await new Promise(r=>setImmediate(r));const run=s=>vm.runInContext(s,context);
