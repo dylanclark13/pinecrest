@@ -10,7 +10,7 @@ import * as challenges from '../web/challenges.js';
 import {request} from './features.mjs';
 const html=fs.readFileSync(new URL('../web/index.html',import.meta.url),'utf8');
 const noop=()=>{},ctx2d=new Proxy({},{get:()=>noop,set:()=>true});
-class Element{constructor(id){this.id=id;this.hidden=false;this.open=false;this.value='';this.dataset={};this.style={};this.width=300;this.height=400;this.classList={add:noop,remove:noop,toggle:noop};}getContext(){return ctx2d}setAttribute(){}getAttribute(){return 'false'}addEventListener(){}querySelector(){return new Element('child')}showModal(){this.open=true}close(){this.open=false}getBoundingClientRect(){return {left:0,top:0,width:300,height:400}}}
+class Element{constructor(id){this.id=id;this.listeners={};this.hidden=false;this.open=false;this.value='';this.dataset={};this.style={};this.width=300;this.height=400;this.classList={add:noop,remove:noop,toggle:noop};}getContext(){return ctx2d}setAttribute(){}getAttribute(){return 'false'}addEventListener(name,fn){this.listeners[name]=fn}appendChild(child){child.parentNode=this;return child}insertBefore(child){child.parentNode=this;return child}click(){this.onclick?.()}querySelector(){return new Element('child')}showModal(){this.open=true}close(){const was=this.open;this.open=false;if(was)this.listeners.close?.()}getBoundingClientRect(){return {left:0,top:0,width:300,height:400}}}
 const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Element(m[1])]));
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
@@ -38,3 +38,19 @@ await run('loadStats()');assert(elements.get('personalStats').innerHTML.includes
 run('renderEquipment()');assert(elements.get('equipmentChoices').innerHTML.includes('percentage points'));assert(elements.get('equipmentChoices').innerHTML.includes('Timing window grows'));
 console.log('PASS complete DOM wiring, practice isolation/restoration, putting setup, replay without gameplay mutation, daily entry, stats and upgrade comparisons.');
 const golfBefore=run('JSON.stringify({roundId,scores,strokes,ball,career})');run("setHomeTab('greenskeeper');keeper.start();keeper.strike();updateKeeper(.016)");assert.equal(elements.get('homeGreenskeeper').hidden,false);assert.equal(run('JSON.stringify({roundId,scores,strokes,ball,career})'),golfBefore);run("setHomeTab('play')");assert.equal(elements.get('homeGreenskeeper').hidden,true);console.log('PASS Greenskeeper tab visibility, renderer wiring and golf career isolation.');
+
+run('closeHome();phase="ready";finished=false;ball.moving=false;updateUI()');
+assert(elements.get('mobileDistance').textContent.includes('yd')||elements.get('mobileDistance').textContent.includes('ft'));
+run('openMobileTools()');assert(elements.get('mobileDetailsDialog').open);
+assert.equal(elements.get('hudLeft').parentNode,elements.get('mobileToolsContent'));
+elements.get('mobileDetailsDialog').close();
+assert.equal(elements.get('hudLeft').parentNode,elements.get('hudMiddle'));
+assert.equal(elements.get('hudRight').parentNode,elements.get('hudMiddle'));
+run('openMobileTools(true)');
+elements.get('minimap').listeners.pointerdown({clientX:180,clientY:150});
+assert.equal(elements.get('mobileDetailsDialog').open,false);
+assert.equal(run('phase'),'ready');assert(run('aimTarget.every(Number.isFinite)'));
+run('openMobileTools();greenGrid=false');elements.get('gridButton').click();
+assert.equal(elements.get('mobileDetailsDialog').open,false);assert.equal(run('greenGrid'),true);
+run('toast("Penalty: replay from the last lie.")');assert(elements.get('mobileNotice').textContent.includes('Penalty'));
+console.log('PASS compact distance display, tools panel restoration, modal map aiming, green controls and inline notifications');

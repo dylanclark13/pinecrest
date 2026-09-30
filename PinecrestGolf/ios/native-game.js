@@ -40,3 +40,11 @@ window.pinecrestNative=async(action,value)=>{
 };
 setInterval(()=>{if(profileLoaded&&!nativePublished)nativeStatus().catch(()=>{});nativeCheckpoint().catch(e=>window.webkit.messageHandlers.nativeError.postMessage(e.message));},2000);
 window.addEventListener('pagehide',()=>{nativeCheckpoint().catch(()=>{});});
+
+// Use the in-game Clubhouse button on iPhone, avoiding a second navigation bar.
+function openNativeMenu(){
+ if(savePending||pendingScore){toast('Save this hole before opening the clubhouse.');return;}
+ window.webkit.messageHandlers.menu.postMessage(true);
+}
+$('courseButton').onclick=openNativeMenu;
+$('nativeMenuButton').onclick=openNativeMenu;

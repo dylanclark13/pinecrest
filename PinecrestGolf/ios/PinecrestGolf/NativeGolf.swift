@@ -77,7 +77,7 @@ final class NativeGame: NSObject, ObservableObject, WKScriptMessageHandlerWithRe
         webView = WKWebView(frame: .zero, configuration: config)
         super.init()
         config.userContentController.addScriptMessageHandler(self, contentWorld: .page, name: "career")
-        for name in ["status", "play", "haptic", "nativeError"] { config.userContentController.add(self, name: name) }
+        for name in ["status", "play", "haptic", "nativeError", "menu"] { config.userContentController.add(self, name: name) }
         webView.navigationDelegate = self
         #if !os(macOS)
         webView.isOpaque = false
@@ -145,6 +145,7 @@ final class NativeGame: NSObject, ObservableObject, WKScriptMessageHandlerWithRe
         case "status":
             if let data = try? JSONSerialization.data(withJSONObject: message.body), let value = try? JSONDecoder().decode(NativeSummary.self, from: data) { summary = value }
         case "play": menu = false
+        case "menu": openMenu()
         case "nativeError": error = message.body as? String ?? "The action could not finish."
         case "haptic":
             guard haptics else { return }
@@ -181,13 +182,20 @@ struct BundledGameView: UIViewRepresentable {
 struct NativeGolfView: View {
     @StateObject private var game = NativeGame()
     @Environment(\.scenePhase) private var scenePhase
+    private var showsNativeToolbar: Bool {
+        #if os(macOS)
+        return true
+        #else
+        return UIDevice.current.userInterfaceIdiom != .phone
+        #endif
+    }
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
+            if showsNativeToolbar { HStack {
                 Button { game.openMenu() } label: { Label("Clubhouse", systemImage: "flag.fill") }
                 Spacer()
                 Text("Device career").font(.caption)
-            }.padding(.horizontal).padding(.vertical, 8).background(Color(red: 0.06, green: 0.15, blue: 0.12))
+            }.padding(.horizontal).padding(.vertical, 8).background(Color(red: 0.06, green: 0.15, blue: 0.12)) }
             BundledGameView(game: game)
         }
         .sheet(isPresented: $game.menu, onDismiss: { game.send("wake") }) { NativeClubhouse(game: game) }

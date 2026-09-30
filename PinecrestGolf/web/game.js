@@ -22,7 +22,7 @@ const isModal=()=>document.querySelector('dialog[open]')!==null;
 const ready=()=>!replay&&!homeOpen&&phase==='ready'&&!finished&&!isModal();
 const finalHole=()=>holeIndex===roundEnd;
 function activeClub(){const c=upgradeClub(CLUBS[clubIndex],clubLevel(career,CLUBS[clubIndex].id));if(clubIndex!==PUTTER_INDEX)return c;const d=Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])*YD;return {...c,range:Math.round(clamp(d*1.75,3,30))};}
-function toast(text,duration=3000){$('toast').textContent=text;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>$('toast').classList.remove('visible'),duration);}
+function toast(text,duration=3000){$('toast').textContent=text;$('mobileNotice').textContent=text;$('mobileNotice').title=text;$('toast').classList.add('visible');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{$('toast').classList.remove('visible');$('mobileNotice').textContent='';$('mobileNotice').title='';},duration);}
 function playTone(kind){if(!sound)return;try{audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();const now=audioContext.currentTime,notes=kind==='cup'?[523,659,784,1046]:kind==='pure'?[90,180,360]:kind==='hit'?[clubIndex===PUTTER_INDEX?330:150]:kind==='water'?[100,70]:[200];notes.forEach((freq,i)=>{const osc=audioContext.createOscillator(),gain=audioContext.createGain();osc.type=kind==='hit'?'triangle':'sine';osc.frequency.setValueAtTime(freq,now+i*.12);if(kind==='hit')osc.frequency.exponentialRampToValueAtTime(50,now+.12);gain.gain.setValueAtTime(.0001,now+i*.12);gain.gain.exponentialRampToValueAtTime(.12,now+i*.12+.008);gain.gain.exponentialRampToValueAtTime(.0001,now+i*.12+.22);osc.connect(gain);gain.connect(audioContext.destination);osc.start(now+i*.12);osc.stop(now+i*.12+.25);});}catch{sound=false;}}
 function setAddress(){actor={x:ball.x,z:ball.z,angle,club:activeClub(),appearance:career.appearance,phase:'address',progress:0,power:.7};}
 function updateSuggestion(){
@@ -34,7 +34,7 @@ function updateSuggestion(){
 }
 function updateUI(){
   $('holeName').textContent=hole.name;$('holeCount').textContent=String(holeIndex+1).padStart(2,'0')+' / '+HOLES.length;$('parValue').textContent=hole.par;$('holeAdvice').textContent=hole.tip;
-  $('game').classList.toggle('ball-in-play',['downswing','flight'].includes(phase));
+  $('game').classList.toggle('ball-in-play',['downswing','flight'].includes(phase));$('game').classList.toggle('setting-shot',['power','accuracy'].includes(phase));
   const d=Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])*YD,lie=surface(hole,ball.x,ball.z),c=activeClub();const sweet=Math.min(.30,hole.sweetSpot*c.forgiveness*(c.type==='putter'?1.15:1));$('sweetSpot').style.left=(50-sweet*50)+'%';$('sweetSpot').style.width=sweet*100+'%';
   $('pinDistance').innerHTML=d<10?(d*3).toFixed(1)+' <small>ft</small>':Math.round(d)+' <small>yd</small>';
   $('strokeValue').textContent=ball.moving||finished?strokes:strokes+1;$('roundScore').textContent=scoreText(totalScore());
@@ -55,6 +55,14 @@ function updateUI(){
   $('gridButton').classList.toggle('selected',greenGrid);$('gridButton').setAttribute('aria-pressed',String(greenGrid));
   const wind=effectiveWind(hole,ball.moving?ball.time:0),mph=Math.hypot(...wind)*2.23694;
   $('windValue').innerHTML=Math.round(mph)+' <small>mph</small>';$('gustValue').textContent='Gusts '+Math.round(Math.hypot(...hole.wind)*2.23694*1.35);
+  $('mobileHole').textContent=practice?'Practice':'H'+(holeIndex+1)+' · Par '+hole.par;
+  $('mobileDistance').textContent=ball.moving?Math.round(shotDistance*YD)+' yd flight':d<10?(d*3).toFixed(1)+' ft':Math.round(d)+' yd';
+  $('mobileStroke').textContent='Shot '+(ball.moving||finished?strokes:strokes+1);
+  const windNames=['N','NE','E','SE','S','SW','W','NW'],windHeading=(Math.round(Math.atan2(wind[0],-wind[1])/(Math.PI/4))+8)%8;
+  $('mobileWind').textContent=Math.round(mph)+' mph '+windNames[windHeading];
+  $('mobileWind').title='Wind blows toward '+windNames[windHeading];
+  $('mobileReplayStop').hidden=!replay;
+
   $('windArrow').style.transform='rotate('+(Math.atan2(wind[0],-wind[1])-angle)+'rad)';
   $('puttingCamera').disabled=ball.moving||Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])>35;$('puttingCamera').setAttribute('aria-pressed',String(view==='putting'));
   $('practiceReset').disabled=ball.moving||['power','accuracy','downswing'].includes(phase);$('practiceDistance').disabled=$('practiceReset').disabled;
@@ -258,22 +266,36 @@ function leavePractice(){
  const v=practiceSnapshot;if(!v)return;({courseIndex,course,HOLES,roundMode,roundStart,roundEnd,holeIndex,hole,ball,clubIndex,angle,view,strokes,scores,phase,power,actor,trail,lastLie,shotStart,shotDistance,shotCarry,shotInFlight,finished,greenGrid,aimTarget,hasRound,roundId,dailyConfig,holeMetrics,lastReplay}=v);practice=null;practiceSnapshot=null;recording=null;$('lengthValue').textContent=Math.round(hole.path.reduce((s,p,i)=>i?s+Math.hypot(p[0]-hole.path[i-1][0],p[1]-hole.path[i-1][1]):0,0)*YD);$('practiceControls').hidden=true;$('game').classList.remove('practicing');$('replayShot').hidden=$('replayHole').hidden=!lastReplay;
 }
 $('practiceRange').onclick=()=>startPractice('range');$('practicePutting').onclick=()=>startPractice('putting');$('practiceReset').onclick=resetPractice;$('practiceDistance').onchange=resetPractice;
-$('puttingCamera').onclick=()=>{if(ball.moving)return;cancelSetup();view=view==='putting'?'follow':'putting';if(view==='putting')greenGrid=true;updateUI();};
+$('puttingCamera').onclick=()=>{if(ball.moving)return;$('mobileDetailsDialog').close();cancelSetup();view=view==='putting'?'follow':'putting';if(view==='putting')greenGrid=true;updateUI();};
 function captureReplay(dt){if(!recording||recording.frames.length>=2500)return;recording.time+=dt;recording.frames.push({t:recording.time,ball:{...ball},actor:structuredClone(actor),angle,view});}
 function sealReplay(holed){
  if(!recording)return;captureReplay(1/120);recording.label=holed?(recording.putt&&recording.distance>=15?'Long putt holed':'Hole out'):recording.label;lastReplay=recording;recording=null;$('replayShot').hidden=$('replayHole').hidden=false;
 }
 function startReplay(){
- if(!lastReplay||ball.moving||!['ready','complete'].includes(phase))return;const modal=$('holeDialog').open;if(modal)$('holeDialog').close();replay={clip:lastReplay,time:0,index:0,modal,eye:[...renderer.eye],center:[...renderer.center],bag:renderer.bagAnchor?{...renderer.bagAnchor}:null};$('replayControls').hidden=false;$('replayLabel').textContent=lastReplay.label+' · Replay';$('game').classList.add('replaying');
+ if(!lastReplay||ball.moving||!['ready','complete'].includes(phase))return;const modal=$('holeDialog').open;if(modal)$('holeDialog').close();replay={clip:lastReplay,time:0,index:0,modal,eye:[...renderer.eye],center:[...renderer.center],bag:renderer.bagAnchor?{...renderer.bagAnchor}:null};$('replayControls').hidden=false;$('replayLabel').textContent=lastReplay.label+' · Replay';$('game').classList.add('replaying');$('mobileReplayStop').hidden=false;
 }
-function stopReplay(){if(!replay)return;const r=replay;replay=null;renderer.eye=r.eye;renderer.center=r.center;renderer.bagAnchor=r.bag;$('replayControls').hidden=true;$('game').classList.remove('replaying');if(r.modal)$('holeDialog').showModal();}
+function stopReplay(){if(!replay)return;const r=replay;replay=null;renderer.eye=r.eye;renderer.center=r.center;renderer.bagAnchor=r.bag;$('replayControls').hidden=true;$('game').classList.remove('replaying');$('mobileReplayStop').hidden=true;if(r.modal)$('holeDialog').showModal();}
 function playReplay(dt){
  replay.time+=dt;const frames=replay.clip.frames;while(replay.index<frames.length-1&&frames[replay.index+1].t<=replay.time)replay.index++;const frame=frames[replay.index];renderer.render({...frame,hole:replay.clip.hole,moving:frame.ball.moving,trail:[],greenGrid:false},dt);if(replay.time>frames.at(-1).t+1)stopReplay();
 }
-$('replayShot').onclick=$('replayHole').onclick=startReplay;$('stopReplay').onclick=stopReplay;
+$('replayShot').onclick=$('replayHole').onclick=()=>{$('mobileDetailsDialog').close();startReplay();};$('stopReplay').onclick=stopReplay;
 
-$('mobileMapButton').onclick=()=>{const open=$('mobileMapButton').getAttribute('aria-expanded')!=='true';$('mobileMapButton').setAttribute('aria-expanded',String(open));$('game').classList.toggle('mobile-map-open',open);$('mobileMapButton').textContent=open?'Close map':'Map';};
-$('mobileDetailsButton').onclick=()=>{cancelSetup();$('mobileDetailsContent').innerHTML='<p><strong>'+escapeHTML(hole.name)+'</strong> · Hole '+(holeIndex+1)+' · Par '+hole.par+'</p><p>Round score: '+scoreText(totalScore())+' · '+escapeHTML($('lieLabel').textContent)+'</p><p>Elevation: '+escapeHTML($('elevationValue').textContent)+' · '+escapeHTML($('lieImpact').textContent)+'</p><p>'+escapeHTML(hole.tip)+'</p><p>'+escapeHTML($('greenReading').textContent)+'</p>';$('mobileSound').textContent=sound?'Turn sound off':'Turn sound on';$('mobileDetailsDialog').showModal();};
+function openMobileTools(mapOnly=false){
+ cancelSetup();const dialog=$('mobileDetailsDialog');dialog.classList.toggle('map-mode',mapOnly);
+ $('mobileDetailsTitle').textContent=mapOnly?'Aim with the map':'Shot tools & details';
+ $('mobileDetailsContent').textContent=mapOnly?'Tap a landing spot to aim and return to the course.':$('toast').textContent;
+ $('mobileToolsContent').appendChild($('hudLeft'));$('mobileToolsContent').appendChild($('hudRight'));
+ $('mobileSound').textContent=sound?'Turn sound off':'Turn sound on';$('mobileSpin').disabled=clubIndex===PUTTER_INDEX||phase!=='ready';$('mobileMapButton').setAttribute('aria-expanded',String(mapOnly));
+ dialog.showModal();drawMap();
+}
+function restoreMobileTools(){
+ $('hudMiddle').insertBefore($('hudLeft'),$('hudCenter'));$('hudMiddle').appendChild($('hudRight'));$('mobileMapButton').setAttribute('aria-expanded','false');
+}
+$('mobileDetailsDialog').addEventListener('close',restoreMobileTools);
+$('mobileMapButton').onclick=()=>openMobileTools(true);
+$('mobileDetailsButton').onclick=()=>openMobileTools();
+$('mobileReplayStop').onclick=stopReplay;
+$('mobileSpin').onclick=()=>{$('mobileDetailsDialog').close();$('spinButton').click();};
 $('mobileScore').onclick=()=>{$('mobileDetailsDialog').close();showScore();};
 $('mobileHelp').onclick=()=>{$('mobileDetailsDialog').close();$('helpDialog').showModal();};
 $('mobileSound').onclick=()=>{$('soundButton').click();$('mobileSound').textContent=sound?'Turn sound off':'Turn sound on';};
@@ -300,14 +322,14 @@ $('swingButton').addEventListener('pointerdown',e=>{if(e.button!==0)return;e.pre
 $('swingButton').addEventListener('pointerup',e=>{e.preventDefault();releasePower();});
 $('swingButton').addEventListener('pointercancel',cancelSetup);$('swingButton').addEventListener('lostpointercapture',()=>{if(phase==='power')cancelSetup();});
 $('swingButton').addEventListener('keydown',e=>{if(e.code==='Enter'&&!e.repeat){e.preventDefault();beginCharge();}});$('swingButton').addEventListener('keyup',e=>{if(e.code==='Enter'){e.preventDefault();releasePower();}});
-$('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1);$('cameraButton').onclick=toggleView;$('gridButton').onclick=()=>{greenGrid=!greenGrid;updateUI();};
+$('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1);$('cameraButton').onclick=()=>{$('mobileDetailsDialog').close();toggleView();};$('gridButton').onclick=()=>{$('mobileDetailsDialog').close();greenGrid=!greenGrid;updateUI();};
 $('helpButton').onclick=()=>{cancelSetup();$('helpDialog').showModal();};$('scoreButton').onclick=showScore;$('resultScorecard').onclick=showScore;
 $('soundButton').onclick=()=>{sound=!sound;$('soundButton').setAttribute('aria-label',sound?'Turn sound off':'Turn sound on');$('soundButton').querySelector('.off-mark').hidden=sound;if(sound)playTone('bounce');};
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>b.closest('dialog').close();
 for(const d of document.querySelectorAll('dialog')){d.addEventListener('click',e=>{if(e.target===d&&d.id!=='holeDialog'){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});if(d.id==='holeDialog')d.addEventListener('cancel',e=>e.preventDefault());}
 $('nextHole').onclick=()=>{$('holeDialog').close();if(finalHole()){showCourses();}else{startHole(holeIndex+1);toast(hole.name+' · Par '+hole.par);}};
 canvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=renderer?.pointOnCourse(e.clientX,e.clientY);if(p)aimAt(...p);});
-map.addEventListener('pointerdown',e=>{if(!mapTransform)return;const r=map.getBoundingClientRect(),x=(e.clientX-r.left)*map.width/r.width,y=(e.clientY-r.top)*map.height/r.height;aimAt((x-mapTransform.cx)/mapTransform.scale,(mapTransform.cz-y)/mapTransform.scale);});
+map.addEventListener('pointerdown',e=>{if(!mapTransform)return;const r=map.getBoundingClientRect(),x=(e.clientX-r.left)*map.width/r.width,y=(e.clientY-r.top)*map.height/r.height;$('mobileDetailsDialog').close();aimAt((x-mapTransform.cx)/mapTransform.scale,(mapTransform.cz-y)/mapTransform.scale);});
 for(const [id,dir]of[['aimLeft',-1],['aimRight',1]]){const btn=$(id);btn.addEventListener('pointerdown',e=>{e.preventDefault();btn.setPointerCapture(e.pointerId);pointerAim=dir;aimDelta(dir*.008);});for(const event of['pointerup','pointercancel','lostpointercapture'])btn.addEventListener(event,()=>{pointerAim=0;});}
 window.addEventListener('keydown',e=>{if(replay){if(e.code==='Escape')stopReplay();return;}if(isModal()||homeOpen)return;if(['Space','ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.code))e.preventDefault();if(e.code==='Space'&&!e.repeat)beginCharge();if(e.code==='ArrowLeft')aimKey=-1;if(e.code==='ArrowRight')aimKey=1;if(e.code==='KeyC'&&!e.repeat)toggleView();if(e.code==='KeyG'&&!e.repeat){greenGrid=!greenGrid;updateUI();}if(e.code==='ArrowUp'&&!e.repeat)changeClub(-1);if(e.code==='ArrowDown'&&!e.repeat)changeClub(1);if(e.code==='Escape')cancelSetup();if(/^Digit[1-8]$/.test(e.code)&&ready()){clubIndex=Number(e.code.slice(-1))-1;updateSuggestion();}});
 window.addEventListener('keyup',e=>{if(e.code==='Space'){e.preventDefault();releasePower();}if(e.code==='ArrowLeft'||e.code==='ArrowRight')aimKey=0;});window.addEventListener('blur',cancelSetup);document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelSetup();});

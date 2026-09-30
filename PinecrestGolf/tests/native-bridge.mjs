@@ -7,10 +7,10 @@ import * as courses from '../web/courses.js';
 import * as progression from '../web/progression.js';
 import * as character from '../web/character.js';
 import * as challenges from '../web/challenges.js';
-let disk='';const nativeMessages={};globalThis.window={webkit:{messageHandlers:{career:{postMessage:async b=>{if(b.operation==='read')return disk;disk=b.data;return true;}},haptic:{postMessage(){}},status:{postMessage:v=>nativeMessages.status=v},play:{postMessage:v=>nativeMessages.play=v},nativeError:{postMessage:v=>nativeMessages.error=v}}}};await import('../ios/PinecrestGolf/Game/native.js');const nativeFetch=window.fetch;
+let disk='';const nativeMessages={};globalThis.window={webkit:{messageHandlers:{career:{postMessage:async b=>{if(b.operation==='read')return disk;disk=b.data;return true;}},menu:{postMessage:v=>nativeMessages.menu=v},haptic:{postMessage(){}},status:{postMessage:v=>nativeMessages.status=v},play:{postMessage:v=>nativeMessages.play=v},nativeError:{postMessage:v=>nativeMessages.error=v}}}};await import('../ios/PinecrestGolf/Game/native.js');const nativeFetch=window.fetch;
 const html=fs.readFileSync(new URL('../ios/PinecrestGolf/Game/index.html',import.meta.url),'utf8');
 const noop=()=>{},ctx2d=new Proxy({},{get:()=>noop,set:()=>true});
-class Element{constructor(id){this.id=id;this.hidden=false;this.open=false;this.value='';this.dataset={};this.style={};this.width=300;this.height=400;this.classList={add:noop,remove:noop,toggle:noop};}getContext(){return ctx2d}setAttribute(){}getAttribute(){return 'false'}addEventListener(){}querySelector(){return new Element('child')}showModal(){this.open=true}close(){this.open=false}getBoundingClientRect(){return {left:0,top:0,width:300,height:400}}}
+class Element{constructor(id){this.id=id;this.listeners={};this.hidden=false;this.open=false;this.value='';this.dataset={};this.style={};this.width=300;this.height=400;this.classList={add:noop,remove:noop,toggle:noop};}getContext(){return ctx2d}setAttribute(){}getAttribute(){return 'false'}addEventListener(name,fn){this.listeners[name]=fn}appendChild(child){child.parentNode=this;return child}insertBefore(child){child.parentNode=this;return child}click(){this.onclick?.()}querySelector(){return new Element('child')}showModal(){this.open=true}close(){const was=this.open;this.open=false;if(was)this.listeners.close?.()}getBoundingClientRect(){return {left:0,top:0,width:300,height:400}}}
 const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Element(m[1])]));
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
@@ -30,3 +30,5 @@ await run('window.pinecrestNative("resume")');assert.equal(run('practice'),null)
 await run('window.pinecrestNative("sound",true)');await run('window.pinecrestNative("status")');assert.equal(nativeMessages.status.sound,true);
 await run('window.pinecrestNative("upgrade","driver")');assert(nativeMessages.error.includes('tokens'));
 console.log('PASS native menu commands, summary payload, between-shot restore, pause, practice isolation, online separation, sound and insufficient-token errors.');
+
+run("savePending=false;pendingScore=null;openNativeMenu()");assert.equal(nativeMessages.menu,true);console.log("PASS in-game native menu access without the extra phone toolbar");
