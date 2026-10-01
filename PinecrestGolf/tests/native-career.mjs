@@ -3,8 +3,8 @@ let disk='',fail=false,writes=0;
 globalThis.window={webkit:{messageHandlers:{career:{postMessage:async b=>{if(b.operation==='read')return disk;if(fail)throw Error('Storage full');disk=b.data;writes++;return true;}},haptic:{postMessage(){}}}}};
 await import('../ios/PinecrestGolf/Game/native.js');
 const request=async(path,body)=>{const r=await window.fetch(path,body===undefined?{}:{method:'POST',body:JSON.stringify(body)});return {status:r.status,...await r.json()};};
-let p=await request('/api/profile');assert.deepEqual(p.profile.unlockedCourses,[0,1,2,3]);assert.equal(p.round,null);
-assert.equal((await request('/api/rounds',{course:4,mode:'full'})).status,503);
+let p=await request('/api/profile');assert.deepEqual(p.profile.unlockedCourses,[0,1,2,3,4,5,6,7]);assert.equal(p.round,null);
+for(let course=4;course<8;course++)for(const mode of ['front','back','full'])assert.equal((await request('/api/rounds',{course,mode})).status,200);
 let start=await request('/api/rounds',{course:3,mode:'full'}),id=start.round.id;
 await request('/api/checkpoint',{roundId:id,hole:0,ball:{x:10,y:0,z:-12},strokes:2,clubIndex:4,angle:1});
 assert.equal((await request('/api/profile')).round.checkpoint.strokes,2);
@@ -19,4 +19,4 @@ const after=(await request('/api/profile')).profile.tokens;const again=await req
 const record=await request('/api/records');assert.equal(record.records.find(r=>r.course===3&&r.mode==='full').personal,90);
 // A fresh module instance must restore from the native file, not the JS heap.
 await import('../ios/PinecrestGolf/Game/native.js?relaunch');assert.equal((await request('/api/profile')).profile.tokens,after);
-assert.ok(writes>20);console.log('PASS offline career, 90 medal progression, checkpoint, duplicate scores, daily rewards, stats, upgrade failure rollback, and relaunch from native storage.');
+assert.ok(writes>20);console.log('PASS offline career, unlocked challenge courses and medals, checkpoint, duplicate scores, daily rewards, stats, upgrade failure rollback, and relaunch from native storage.');

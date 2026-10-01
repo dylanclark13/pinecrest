@@ -52,7 +52,6 @@ async function handle(request,env,user,account=null){
   }
   if(path==='/api/rounds'&&request.method==='POST'){
    const b=await request.json();if(!Number.isInteger(b.course)||b.course<0||b.course>7||!['front','back','full'].includes(b.mode))return json({error:'Choose a course and round length.'},400);
-   const progress=await courseProgress(env,user);if(!progress.unlockedCourses.includes(b.course))return json({error:'Course locked. Finish the required 18 hole rounds in 90 strokes or fewer.'},403);
    const id=crypto.randomUUID(),start=b.mode==='back'?9:0,end=b.mode==='front'?8:17;await ensurePlayer(env,user);
    await db(env).batch([db(env).prepare("UPDATE rounds SET status='closed' WHERE user_id=? AND status='active'").bind(user),db(env).prepare('INSERT INTO rounds(id,user_id,course,mode,next_hole,end_hole,status,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(id,user,b.course,b.mode,start,end,'active',Date.now())]);return json({round:await currentRound(env,user),profile:await profile(env,user)});
   }

@@ -267,7 +267,6 @@ struct NativeClubhouse: View {
                         Text(c.name).font(.headline)
                         Text(c.difficulty).font(.subheadline)
                         if c.best > 0 { Text("Best \(c.best) · \(c.medal)").font(.caption) }
-                        if !c.available { Text("Score 90 or lower over 18 holes on the previous course.").font(.caption) }
                     }
                 }.disabled(!c.available)
             }

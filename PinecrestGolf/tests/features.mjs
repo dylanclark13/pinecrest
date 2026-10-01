@@ -9,13 +9,13 @@ for(const file of fs.readdirSync(new URL('../drizzle/',import.meta.url)).filter(
 export const DB={prepare(sql){let args=[];return {bind(...a){args=a;return this},async first(){return sqlite.prepare(sql).get(...args)||null},async all(){return {results:sqlite.prepare(sql).all(...args)}},async run(){const r=sqlite.prepare(sql).run(...args);return {meta:{changes:r.changes}}}}},async batch(stmts){sqlite.exec('BEGIN');try{const r=[];for(const s of stmts)r.push(await s.run());sqlite.exec('COMMIT');return r}catch(e){sqlite.exec('ROLLBACK');throw e}}};
 export async function request(path,body,user='features'){const r=await worker.fetch(new Request('https://golf.test'+path,{method:body===undefined?'GET':'POST',headers:{'oai-authenticated-user-id':user,'content-type':'application/json'},...(body===undefined?{}:{body:JSON.stringify(body)})}),{DB});return {status:r.status,body:await r.json()};}
 for(const [score,m] of [[91,null],[90,'Bronze'],[82,'Bronze'],[81,'Silver'],[73,'Silver'],[72,'Gold']])assert.equal(medal(score),m);
-assert.deepEqual(unlockedCourses({3:90}),[0,1,2,3,4]);assert(!unlockedCourses({3:91}).includes(4));assert.deepEqual(unlockedCourses({3:72,4:90,5:90,6:90}),[0,1,2,3,4,5,6,7]);
+for(const best of [{},{3:91},{3:90},{3:72,4:90}])assert.deepEqual(unlockedCourses(best),[0,1,2,3,4,5,6,7]);
 async function complete(r,score,metrics=true,user='features'){let result;for(let h=r.next_hole;h<=r.end_hole;h++){result=await request('/api/rounds/'+r.id+'/holes',{hole:h,strokes:score, ...(metrics?{metrics:{putts:2,fairway:COURSES[r.course].holes[h].par>3?1:null,gir:1}}:{})},user);assert.equal(result.status,200);}return result;}
-assert.equal((await request('/api/rounds',{course:4,mode:'full'})).status,403);
-let r=(await request('/api/rounds',{course:3,mode:'front'})).body.round;await complete(r,5);assert.equal((await request('/api/rounds',{course:4,mode:'full'})).status,403);
+for(let course=4;course<8;course++)for(const mode of ['front','back','full'])assert.equal((await request('/api/rounds',{course,mode})).status,200);
+let r=(await request('/api/rounds',{course:3,mode:'front'})).body.round;await complete(r,5);for(let course=4;course<8;course++)for(const mode of ['front','back','full'])assert.equal((await request('/api/rounds',{course,mode})).status,200);
 r=(await request('/api/rounds',{course:3,mode:'full'})).body.round;await complete(r,5);
-const p=(await request('/api/profile')).body.profile;assert.equal(p.courseBest[3],90);assert.equal(p.courseMedals[3],'Bronze');assert(p.unlockedCourses.includes(4));assert(!p.unlockedCourses.includes(5));
-assert.equal((await request('/api/rounds',{course:4,mode:'full'},'stranger')).status,403);
+const p=(await request('/api/profile')).body.profile;assert.equal(p.courseBest[3],90);assert.equal(p.courseMedals[3],'Bronze');assert(p.unlockedCourses.includes(4));assert.deepEqual(p.unlockedCourses,[0,1,2,3,4,5,6,7]);
+assert.equal((await request('/api/rounds',{course:4,mode:'full'},'stranger')).status,200);
 let stats=(await request('/api/stats')).body.stats;assert.equal(stats.trackedHoles,27);assert.equal(stats.putts,54);assert.equal(stats.greens,27);
 const before=JSON.stringify(stats),dailyA=(await request('/api/daily')).body.daily,dailyB=(await request('/api/daily',undefined,'stranger')).body.daily;assert.deepEqual(dailyA,dailyB);
 assert.deepEqual(dailyA,dailyChallenge());assert.equal(dailyA.end-dailyA.start,2);
@@ -31,4 +31,4 @@ assert.equal(JSON.stringify((await request('/api/stats')).body.stats),before);
 assert.equal((await request('/api/daily')).body.reward,50);
 assert.equal((await request('/api/stats',undefined,'stranger')).body.stats.trackedHoles,0);
 const records=(await request('/api/records')).body.records;assert(records.every(r=>['full','front','back'].includes(r.mode)));
-console.log('PASS medal thresholds, bronze progression, partial-round exclusion, statistics, deterministic daily holes/weather, once-only rewards, retry safety, and account isolation.');
+console.log('PASS medal thresholds, all-course access, partial-round exclusion, statistics, deterministic daily holes/weather, once-only rewards, retry safety, and account isolation.');
