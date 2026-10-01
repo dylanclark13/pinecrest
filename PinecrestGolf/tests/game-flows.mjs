@@ -54,3 +54,13 @@ run('openMobileTools();greenGrid=false');elements.get('gridButton').click();
 assert.equal(elements.get('mobileDetailsDialog').open,false);assert.equal(run('greenGrid'),true);
 run('toast("Penalty: replay from the last lie.")');assert(elements.get('mobileNotice').textContent.includes('Penalty'));
 console.log('PASS compact distance display, tools panel restoration, modal map aiming, green controls and inline notifications');
+function timedShot(fast,shotPower,shotAccuracy){
+ for(const e of elements.values())e.close();
+ run("showCourses();startPractice('range');phase='ready';power="+shotPower+";accuracy="+shotAccuracy+";actor.club=activeClub();impact();recording=null;accum=0;last=1000;fastForward="+fast);
+ let frames=0;while(run('ball.moving')&&frames<3000){frames++;run('animate('+(1000+frames*1000/60)+')');}
+ assert(frames<3000,'shot finishes');
+ const result=run('JSON.stringify({x:ball.x,y:ball.y,z:ball.z,holed:ball.holed,strokes,shotCarry,shotDistance})');return {frames,result};
+}
+for(const [power,accuracy]of[[.7,0],[.95,.6]]){const regular=timedShot(false,power,accuracy),quick=timedShot(true,power,accuracy);assert.equal(quick.result,regular.result,'fast-forward preserves shot outcome');assert(quick.frames<regular.frames*.3,'4x speed finishes much sooner');}
+run('updateUI()');assert.equal(elements.get('fastForwardShot').hidden,true);
+console.log('PASS normal and off-center shots land identically at 1x and 4x; button hides after landing');

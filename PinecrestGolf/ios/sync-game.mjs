@@ -10,6 +10,7 @@ for(const file of await fs.readdir(new URL('web/',root))){
  if(file==='index.html')text=text.replace('<footer class="home-footer">','<footer class="home-footer"><button id="nativeMenuButton" class="outline-button">App menu</button>');
  if(file==='game.js')text="import './native.js';\n"+text.replaceAll('Career saved to your account.','Career saved on this device.').replace("playTone(actor.perfect?'pure':'hit');","playTone(actor.perfect?'pure':'hit');window.golfHaptic(actor.perfect?'perfect':'hit');").replace("pendingScore=null;$('resultXP')","pendingScore=null;window.golfHaptic('hole');$('resultXP')");
  if(file==='game.js'){
+ text=text.replace('showLaunchNotice();loadCareer();','loadCareer();');
  text=text.replace('startHole(r.next_hole);showRoundNotice();','startHole(r.next_hole);restoreNativeCheckpoint(r.checkpoint);showRoundNotice();');
  text=text.replace('last=now;if(replay)', 'last=now;if(nativePaused){requestAnimationFrame(animate);return;}if(replay)');
  text=text.replace("if(phase==='accuracy'){commitStrike();return;}", "if(phase==='ready')nativeCheckpoint().catch(e=>window.webkit.messageHandlers.nativeError.postMessage(e.message));if(phase==='accuracy'){commitStrike();return;}");
