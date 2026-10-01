@@ -303,7 +303,17 @@ $('mobileSound').onclick=()=>{$('soundButton').click();$('mobileSound').textCont
 $('characterTab').onclick=()=>setHomeTab('character');$('recordsTab').onclick=()=>setHomeTab('records');
 $('spinButton').onclick=()=>{if(!ready()||clubIndex===PUTTER_INDEX)return;syncSpin();$('spinDialog').showModal();};
 $('backSpin').oninput=e=>{if(phase==='ready'){spinBack=Number(e.target.value)/100;syncSpin();}};$('sideSpin').oninput=e=>{if(phase==='ready'){spinShape=Number(e.target.value)/100;syncSpin();}};$('resetSpin').onclick=()=>{spinBack=0;spinShape=0;syncSpin();};
+function playKeeperSound(tool){
+ if(!sound)return;if(tool==='hose'){playTone('water');return;}
+ try{
+ audioContext??=new(window.AudioContext||window.webkitAudioContext)();if(audioContext.state==='suspended')audioContext.resume();
+ const now=audioContext.currentTime,squeak=tool==='squeaky'||tool==='plunger',spin=tool==='broom'||tool==='shovel',count=squeak||spin?2:1;
+ for(let i=0;i<count;i++){const osc=audioContext.createOscillator(),gain=audioContext.createGain(),t=now+i*.13;osc.type=squeak?'sine':'triangle';osc.frequency.setValueAtTime(squeak?700+i*250:spin?240+i*100:180,t);osc.frequency.exponentialRampToValueAtTime(squeak?160:55,t+.28);gain.gain.setValueAtTime(.0001,t);gain.gain.exponentialRampToValueAtTime(.065,t+.012);gain.gain.exponentialRampToValueAtTime(.0001,t+.30);osc.connect(gain);gain.connect(audioContext.destination);osc.start(t);osc.stop(t+.32);}
+ }catch{sound=false;}
+}
 function renderKeeperUI(){
+ if($('keeperQuip').textContent!==keeper.spokenLine)$('keeperQuip').textContent=keeper.spokenLine;
+ $('keeperSound').textContent=sound?'Sound on':'Sound off';$('keeperSound').setAttribute('aria-pressed',String(sound));
  $('keeperScore').textContent=keeper.score;$('keeperTime').textContent=Math.ceil(keeper.time)+'s';$('keeperBest').textContent=keeper.best;$('keeperNeedle').style.left=(keeper.marker*100)+'%';
  if($('keeperFeedback').textContent!==keeper.message)$('keeperFeedback').textContent=keeper.message;
  $('keeperDifficulty').disabled=keeper.running;$('keeperDifficultyHint').textContent=keeper.settings.description;$('keeperSelectedTool').textContent=KEEPER_TOOLS[keeper.tool].name;
@@ -315,15 +325,16 @@ function renderKeeperUI(){
 function updateKeeper(dt){
  if(!keeperRenderer&&!keeperRenderFailed)try{keeperRenderer=new GolfRenderer($('keeperCanvas'));}catch(e){keeperRenderFailed=true;$('keeperRenderError').hidden=false;$('keeperStart').disabled=true;}
  const before=keeper.effect;keeper.update(dt);
- if(before<.18&&keeper.effect>=.18&&keeper.quality!=='idle'&&keeper.quality!=='miss'){playTone(keeper.effectTool==='hose'?'water':keeper.quality==='perfect'?'pure':'hit');window.golfHaptic?.(keeper.quality==='perfect'?'perfect':'hit');}
+ if(before<.18&&keeper.effect>=.18&&keeper.quality!=='idle'&&keeper.quality!=='miss'){playKeeperSound(keeper.effectTool);window.golfHaptic?.(keeper.quality==='perfect'?'perfect':'hit');}
  renderKeeperUI();if(!keeperRenderer)return;
- const h=COURSES[0].holes[0];keeperRenderer.render({hole:h,ball:makeBall(h),angle:0,view:'greenskeeper',moving:false,trail:[],power:0,clubIndex:PUTTER_INDEX,keeper:{elapsed:keeper.effect,tool:keeper.effectTool,quality:keeper.quality,closeView:keeper.closeView,reduced:window.matchMedia('(prefers-reduced-motion: reduce)').matches},actor:{x:0,z:0,angle:0,club:CLUBS[PUTTER_INDEX],appearance:{skin:1,shirt:5,pants:2,cap:3,hat:true},phase:'follow',progress:1,power:.4}},dt);
+ const h=COURSES[0].holes[0];keeperRenderer.render({hole:h,ball:makeBall(h),angle:0,view:'greenskeeper',moving:false,trail:[],power:0,clubIndex:PUTTER_INDEX,keeper:{elapsed:keeper.effect,tool:keeper.effectTool,quality:keeper.quality,variant:keeper.variant,closeView:keeper.closeView,reduced:window.matchMedia('(prefers-reduced-motion: reduce)').matches},actor:{x:0,z:0,angle:0,club:CLUBS[PUTTER_INDEX],appearance:{skin:1,shirt:5,pants:2,cap:3,hat:true},phase:'follow',progress:1,power:.4}},dt);
 }
 $('greenskeeperTab').onclick=()=>{setHomeTab('greenskeeper');renderKeeperUI();};
 for(let i=0;i<KEEPER_TOOLS.length;i++)$('keeperTool'+i).onclick=()=>{keeper.tool=i;if(keeper.cooldown===0){keeper.effectTool=KEEPER_TOOLS[i].id;keeper.effect=2;keeper.quality='idle';}renderKeeperUI();};
 $('keeperStart').onclick=()=>{keeper.start();renderKeeperUI();};
 $('keeperHit').onclick=()=>{keeper.strike();renderKeeperUI();};
 $('keeperDifficulty').onchange=e=>{keeper.setDifficulty(e.target.value);renderKeeperUI();};
+$('keeperSound').onclick=()=>{$('soundButton').click();renderKeeperUI();};
 $('keeperCamera').onclick=()=>{keeper.closeView=!keeper.closeView;$('keeperCamera').setAttribute('aria-pressed',String(keeper.closeView));$('keeperCamera').textContent=keeper.closeView?'Office view':'Close-up view';};
 $('playTab').onclick=()=>setHomeTab('play');$('equipmentTab').onclick=()=>setHomeTab('equipment');$('homeRetry').onclick=loadCareer;$('resumeRound').onclick=resumeSavedRound;$('retryScore').onclick=saveHoleResult;
 $('courseButton').onclick=showCourses;$('startRound').onclick=startSelectedRound;

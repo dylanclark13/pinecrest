@@ -25,7 +25,7 @@ for(const tool of KEEPER_TOOLS){
  assert.equal(keeperReaction({tool:tool.id,elapsed:2}).amount,0,'reaction fully recovers');
  assert.equal(keeperReaction({tool:tool.id,elapsed:.3,reduced:true}).amount,0,'reduced motion suppresses recoil');
 }
-assert(keeperReaction({tool:'broom',elapsed:.3}).swivel>1);
+assert(keeperReaction({tool:'broom',elapsed:.9}).swivel>Math.PI);
 console.log('PASS contact timing, dramatic recoil, recovery and reduced motion for all tools');
 for(const quality of ['idle','miss','solid','perfect'])for(const tool of KEEPER_TOOLS){
  renderer.render({view:'greenskeeper',keeper:{tool:tool.id,elapsed:.3,quality,closeView:true,reduced:false}},1/60);
@@ -33,3 +33,10 @@ for(const quality of ['idle','miss','solid','perfect'])for(const tool of KEEPER_
 }
 assert(keeperReaction({tool:'fist',elapsed:.3,quality:'perfect'}).amount>keeperReaction({tool:'fist',elapsed:.3,quality:'solid'}).amount);
 console.log('PASS close-up camera and distinct miss, solid, and perfect reaction geometry');
+
+assert(keeperReaction({tool:'glove',elapsed:.8}).roll>.4);
+assert(keeperReaction({tool:'squeaky',elapsed:.8}).hat>.5);
+assert.notEqual(keeperReaction({tool:'hand',elapsed:.8,variant:0}).look,keeperReaction({tool:'hand',elapsed:.8,variant:1}).look);
+for(const tool of KEEPER_TOOLS)for(const elapsed of [.4,.9,1.4,1.7])for(const variant of [0,1])renderer.render({view:'greenskeeper',keeper:{tool:tool.id,elapsed,variant,quality:'perfect',closeView:true,reduced:false}},1/60);
+for(const tool of KEEPER_TOOLS){const r=keeperReaction({tool:tool.id,elapsed:.8,reduced:true});assert(Object.values(r).every(v=>v===0));}
+console.log('PASS full spin, rolling chair, flying cap, mirrored double-takes and reduced-motion suppression');

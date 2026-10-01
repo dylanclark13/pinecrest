@@ -45,11 +45,25 @@ export function addOffice(m){
  m.tube([2.04,2.35,-2.045],[2.04,2.49,-2.045],.008,.008,rubber,6);m.tube([2.04,2.35,-2.045],[2.14,2.30,-2.045],.009,.009,rubber,6);
 }
 export function keeperReaction(k){
- const t=k.elapsed-.18;
- if(k.reduced||k.quality==='miss'||t<=0||t>=1.45)return {amount:0,swivel:0,rock:0,hat:0};
+ const t=k.elapsed-.18,zero={amount:0,swivel:0,rock:0,hat:0,kick:0,bounce:0,look:0,shiver:0,roll:0,hatTurn:0};
+ if(k.reduced||k.quality==='idle'||k.quality==='miss'||t<=0||t>=1.45)return zero;
  const strength=k.quality==='solid'?.62:k.quality==='perfect'?1.12:1,amount=(t<.14?Math.sin(t/.14*Math.PI/2):Math.pow(1-(t-.14)/1.31,2))*strength;
- const side=['hand','broom','shovel'].includes(k.tool),big=k.tool==='glove'||k.tool==='mallet';
- return {amount,swivel:side?amount*(k.tool==='broom'?1.4:.85):Math.sin(t*16)*amount*.13,rock:amount*(big?.28:.13),hat:amount*(k.tool==='squeaky'?.52:.23)};
+ const pulse=Math.sin(Math.min(1,t/1.45)*Math.PI),late=Math.exp(-Math.pow((t-.72)/.19,2)),direction=(k.variant||0)%2?-1:1;
+ const r={...zero,amount,rock:amount*.13,hat:amount*.20};
+ if(k.tool==='broom'||k.tool==='shovel'){
+ const u=Math.min(1,t/1.15),turn=u*u*(3-2*u);r.swivel=direction*tau*turn;r.kick=pulse*.17;r.look=late*.4;
+ }else if(k.tool==='glove'||k.tool==='fist'){
+ r.rock=amount*.29;r.roll=pulse*(k.tool==='glove'?.48:.25);r.kick=amount*.24;r.look=direction*late*.60;
+ }else if(k.tool==='hand'){
+ r.swivel=direction*amount*.85;r.look=direction*(-amount*.40+late*.90);r.hat=amount*.27;
+ }else if(k.tool==='mallet'||k.tool==='squeaky'){
+ r.bounce=Math.abs(Math.sin(t*13))*Math.exp(-t*2.5)*.20*strength;r.hat=pulse*(k.tool==='squeaky'?.57:.35);r.hatTurn=direction*pulse*2.8;r.kick=r.bounce*.8;
+ }else if(k.tool==='hose'){
+ r.shiver=Math.sin(t*43)*pulse*.045;r.look=Math.sin(t*24)*pulse*.25;r.rock=amount*.20;r.hat=0;
+ }else if(k.tool==='plunger'){
+ r.hat=Math.sin(Math.min(1,t/.9)*Math.PI)*.53;r.hatTurn=direction*pulse*1.8;r.look=late*.6;r.bounce=t>.45?Math.abs(Math.sin((t-.45)*12))*Math.exp(-(t-.45)*5)*.07:0;
+ }else {r.look=direction*late*.6;r.shiver=Math.sin(t*20)*pulse*.035;r.kick=amount*.13;}
+ return r;
 }
 export function addSeatedKeeper(scene,time,k){
  const m=new scene.constructor(),r=keeperReaction(k),reaction=r.amount,sway=reaction*(k.tool==='hand'?.28:.07),lean=reaction*(k.tool==='glove'?.32:.22);
@@ -59,13 +73,14 @@ export function addSeatedKeeper(scene,time,k){
  m.box([0,.52,-.40],[.56,.11,.53],rubber);m.box([0,.96,-.67],[.53,.78,.10],[.13,.17,.15]);
  for(const side of[-1,1]){m.tube([side*.29,.54,-.49],[side*.29,.76,-.41],.025,.025,steel,9);m.box([side*.29,.78,-.28],[.07,.05,.34],rubber);}
  const body=new m.constructor(),breath=k.reduced?0:Math.sin(time*1.9)*.008,idle=k.reduced?0:Math.sin(time*.65)*.035,duck=k.quality==='miss'&&!k.reduced&&k.elapsed<.7?Math.sin(k.elapsed/.7*Math.PI)*.12:0;
+ const shrug=k.quality==='miss'&&!k.reduced&&k.elapsed<1.1?Math.sin(k.elapsed/1.1*Math.PI)*.45:0,gesture=reaction+shrug;
  // Bent knees and planted boots make the seated posture explicit.
- for(const side of[-1,1]){const hip=[side*.14,.59,-.40],knee=[side*.18,.52,-.02],ankle=[side*.18,.14,.05];body.tube(hip,knee,.10,.085,[.29,.25,.18],14);body.sphere(...knee,.088,.082,.089,[.29,.25,.18],8,12);body.tube(knee,ankle,.079,.063,[.29,.25,.18],14);body.sphere(side*.18,.083,.14,.089,.075,.17,[.19,.14,.10],9,14);body.box([side*.18,.029,.14],[.17,.035,.30],rubber);}
+ for(const side of[-1,1]){const hip=[side*.14,.59,-.40],knee=[side*.18,.52,-.02],ankle=[side*.18,.14+r.kick,.05+r.kick*.7];body.tube(hip,knee,.10,.085,[.29,.25,.18],14);body.sphere(...knee,.088,.082,.089,[.29,.25,.18],8,12);body.tube(knee,ankle,.079,.063,[.29,.25,.18],14);body.sphere(side*.18,.083+r.kick,.14+r.kick*.7,.089,.075,.17,[.19,.14,.10],9,14);body.box([side*.18,.029+r.kick,.14+r.kick*.7],[.17,.035,.30],rubber);}
  body.ellipsoidBetween([0,.58,-.40],[0,1.09,-.43],.22+breath,.14+breath*.5,shirt,24);body.sphere(0,1.08,-.43,.23,.07,.15,shirt,10,16);
  body.tube([0,1.09,-.42],[0,1.20,-.42],.065,.06,skin,12);
  for(const s of[-1,1]){
  body.tube([s*.02,1.12,-.28],[s*.1,1.035,-.28],.023,.012,[.10,.21,.14],10);
- const elbow=[s*(.30+reaction*.15),.84+reaction*.24,-.22-reaction*.16],wrist=[s*(.25+reaction*(k.tool==='hose'?.02:.28)),.90+reaction*(.58+Math.sin(k.elapsed*20+s)*.10),.28-reaction*.53];
+ const elbow=[s*(.30+gesture*.15),.84+gesture*.24,-.22-reaction*.16],wrist=[s*(.25+gesture*(k.tool==='hose'?.02:.28)),.90+gesture*(.58+Math.sin(k.elapsed*20+s)*.10),.28-reaction*.53];
  body.tube([s*.20,1.055,-.42],elbow,.082,.065,shirt,14);body.sphere(...elbow,.066,.066,.066,shirt,8,12);body.tube(elbow,wrist,.052,.036,skin,14);body.sphere(...wrist,.056,.04,.07,skin,8,12);
  for(let i=0;i<4;i++){const x=wrist[0]+(i-1.5)*.022;body.tube([x,wrist[1],wrist[2]+.02],[x+(i-1.5)*reaction*.014,wrist[1]+reaction*.09,wrist[2]+.09],.009,.008,skin,7);}
  }
@@ -77,11 +92,16 @@ export function addSeatedKeeper(scene,time,k){
  for(const s of[-1,1]){body.sphere(s*.114,1.325,-.42,.023,.038,.017,skin,7,10);body.sphere(s*.043,1.345,-.320,.022,blink?.003:.009+reaction*.009,.008,[.86,.84,.73],6,10);body.sphere(s*.043,1.345,-.311,.007,blink?.002:.007,.003,[.14,.19,.15],6,8);body.tube([s*.025,1.372,-.318],[s*.065,1.377,-.32],.005,.005,[.28,.23,.18],7);}
  body.sphere(0,1.315,-.302,.020,.033,.027,skin,8,12);body.sphere(0,1.267,-.308,.030,.004+reaction*.025,.005,[.28,.14,.09],8,12);
  // Separate cap crown, visor, seams and badge.
- body.sphere(0,1.457+r.hat,-.43,.127,.057,.116,shirt,12,20);body.sphere(0,1.451+r.hat,-.308,.14,.012,.10,shirt,7,18);body.box([0,1.48+r.hat,-.324],[.05,.029,.01],[.80,.77,.52]);
- m.addTransformed(body,p=>[p[0]+(sway+idle)*Math.max(0,p[1]-.55),p[1]+breath*Math.max(0,p[1]-.6)-duck*Math.max(0,p[1]-.6),p[2]-(lean+duck)*Math.max(0,p[1]-.55)]);
+ const cap=new m.constructor();cap.sphere(0,0,0,.127,.057,.116,shirt,12,20);cap.sphere(0,-.006,.122,.14,.012,.10,shirt,7,18);cap.box([0,.023,.106],[.05,.029,.01],[.80,.77,.52]);
+ body.addTransformed(cap,p=>[p[0]*Math.cos(r.hatTurn)-p[1]*Math.sin(r.hatTurn),1.457+r.hat+p[0]*Math.sin(r.hatTurn)+p[1]*Math.cos(r.hatTurn),-.43+p[2]]);
+ m.addTransformed(body,p=>{
+ const head=p[1]>1.18?Math.min(1,(p[1]-1.18)/.10):0,look=r.look*head,xx=p[0]*Math.cos(look)+(p[2]+.42)*Math.sin(look),zz=-p[0]*Math.sin(look)+(p[2]+.42)*Math.cos(look)-.42;
+ return [xx+(sway+idle)*Math.max(0,p[1]-.55)+r.shiver*head,p[1]+breath*Math.max(0,p[1]-.6)-duck*Math.max(0,p[1]-.6),zz-(lean+duck)*Math.max(0,p[1]-.55)];
+ });
  if(reaction>0)for(let i=0;i<8;i++){const a=i/8*tau+time*4;m.sphere(Math.cos(a)*(.24+reaction*.1),1.61+Math.sin(a)*.07,-.42+Math.sin(a)*.2,.027,.027,.027,k.tool==='hose'?[.42,.77,.89]:[.98,.82,.34],5,7);}
  // Chair and occupant recoil together, then recover to the seated pose.
- scene.addTransformed(m,p=>{const y=p[1]-.12,z=p[2]+.4,yy=y*Math.cos(r.rock)+z*Math.sin(r.rock),zz=-y*Math.sin(r.rock)+z*Math.cos(r.rock);return [p[0]*Math.cos(r.swivel)+zz*Math.sin(r.swivel),yy+.12+reaction*.07,-p[0]*Math.sin(r.swivel)+zz*Math.cos(r.swivel)-.4-reaction*.24];});
+ scene.addTransformed(m,p=>{const y=p[1]-.12,z=p[2]+.4,yy=y*Math.cos(r.rock)+z*Math.sin(r.rock),zz=-y*Math.sin(r.rock)+z*Math.cos(r.rock);return [p[0]*Math.cos(r.swivel)+zz*Math.sin(r.swivel),yy+.12+reaction*.07+r.bounce,-p[0]*Math.sin(r.swivel)+zz*Math.cos(r.swivel)-.4-reaction*.24-r.roll];});
+ if(k.tool==='hose'&&!k.reduced&&k.quality!=='miss'&&k.quality!=='idle'&&k.elapsed>.18&&k.elapsed<1.5){for(let i=0;i<7;i++){const fall=((k.elapsed-.18)*1.4+i*.15)%1;scene.sphere((i-3)*.034,1.44-fall*.48,-.24,.010,.022,.010,[.45,.75,.88],5,7);}}
  if(reaction>0){
  // A few loose sheets flutter above the desk while the furniture stays put.
  for(let i=0;i<3;i++){const f=reaction,xx=-.30+(i-1)*f*.24,y=.87+f*(.22+i*.10),z=.52-f*.17;scene.quad([xx-.12,y,z-.09],[xx+.12,y+f*.04,z-.09],[xx+.12,y,z+.09],[xx-.12,y-f*.04,z+.09],[.87,.86,.75]);}
