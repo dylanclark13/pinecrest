@@ -14,13 +14,15 @@ async function nativeStatus(){
  if(!profileLoaded)return;
  const data=await api('/api/stats');
  const clubs=CLUBS.map(c=>{const level=clubLevel(career,c.id),now=upgradeClub(c,level),next=level<4?upgradeClub(c,level+1):null;return {id:c.id,name:c.name,level:level+1,cost:UPGRADE_COSTS[level]||0,carry:now.range,nextCarry:next?.range||now.range,forgiveness:Math.round((now.forgiveness-1)*100),nextForgiveness:next?Math.round((next.forgiveness-1)*100):Math.round((now.forgiveness-1)*100),spin:c.type==='putter'?0:Math.round(now.spinControl*100),nextSpin:c.type==='putter'?0:Math.round((next?.spinControl||now.spinControl)*100)};});
- nativePublished=true;window.webkit.messageHandlers.status.postMessage({tokens:career.tokens,name:career.displayName||'Golfer',courses:COURSES.map((c,i)=>({id:i,name:c.name,difficulty:c.difficulty,available:career.unlockedCourses.includes(i),best:career.courseBest[i]??0,medal:career.courseMedals[i]||''})),clubs,stats:data.stats,resume:Boolean(savedRound||hasRound),sound:sound});
+ nativePublished=true;window.webkit.messageHandlers.status.postMessage({tokens:career.tokens,name:career.displayName||'Golfer',courses:COURSES.map((c,i)=>({id:i,name:c.name,difficulty:c.difficulty,available:career.unlockedCourses.includes(i),best:career.courseBest[i]??0,medal:career.courseMedals[i]||''})),clubs,stats:data.stats,resume:Boolean(savedRound||hasRound),sound:sound,musicEnabled:music.enabled,musicVolume:music.volume});
 }
 window.pinecrestNative=async(action,value)=>{
  try{
- if(action==='pause'){await nativeCheckpoint();cancelSetup();nativePaused=true;return;}
- if(action==='wake'){nativePaused=false;return;}
+ if(action==='pause'){music.setPaused(true);await nativeCheckpoint();cancelSetup();nativePaused=true;return;}
+ if(action==='wake'){music.setPaused(false);nativePaused=false;return;}
  if(action==='status'){await nativeStatus();return;}
+ if(action==='music'){music.setEnabled(value);renderMusicControls();return;}
+ if(action==='musicVolume'){music.setVolume(value);renderMusicControls();return;}
  if(action==='sound'){sound=Boolean(value);return;}
  if(action==='controller'){if(nativePaused)return;const code=value.code;window.dispatchEvent(new KeyboardEvent(value.down?'keydown':'keyup',{code,repeat:false,bubbles:true}));return;}
  if(['downswing','flight'].includes(phase)||savePending||pendingScore)throw Error('Wait until the shot and score finish saving.');
@@ -35,7 +37,7 @@ window.pinecrestNative=async(action,value)=>{
  else if(action==='character'){showCourses();setHomeTab('character');}
  else if(action==='tutorial')showOnboarding();
  else return;
- nativePaused=false;window.webkit.messageHandlers.play.postMessage(true);
+ music.setPaused(false);nativePaused=false;window.webkit.messageHandlers.play.postMessage(true);
  }catch(e){window.webkit.messageHandlers.nativeError.postMessage(e.message);}
 };
 setInterval(()=>{if(profileLoaded&&!nativePublished)nativeStatus().catch(()=>{});nativeCheckpoint().catch(e=>window.webkit.messageHandlers.nativeError.postMessage(e.message));},2000);

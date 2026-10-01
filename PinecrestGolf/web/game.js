@@ -1,3 +1,4 @@
+import {createGolfMusic} from './music.js';
 import {GreenskeeperGame,KEEPER_TOOLS} from './greenskeeper.js';
 import {PALETTES,DEFAULT_LOOK} from './character.js';
 import {CLUBS,PUTTER_INDEX,YD,clamp,height,surface,makeBall,launch,stepBall,recommendedClub,lieFactor,effectiveWind,greenGradient,bunkerRadius} from './physics.js';
@@ -17,6 +18,7 @@ let account=null,appearanceDraft={...DEFAULT_LOOK},authMode='login',onboardingSt
 let sound=false,audioContext=null,toastTimer=0,mapTransform=null,collisionCooldown=0,aimTarget=[...hole.pin],aimKey=0,pointerAim=0,lastStrike='';
 let practice=null,practiceSnapshot=null,dailyConfig=null,holeMetrics={putts:0,fairway:null,gir:0},recording=null,lastReplay=null,replay=null;
 const keeper=new GreenskeeperGame();let keeperRenderer=null,keeperRenderFailed=false;
+const music=createGolfMusic(window,document);
 const scoreText=n=>n===0?'E':n>0?'+'+n:String(n);
 const totalScore=()=>scores.reduce((s,n,i)=>n===null?s:s+n-HOLES[i].par,0);
 const isModal=()=>document.querySelector('dialog[open]')!==null;
@@ -346,6 +348,13 @@ $('swingButton').addEventListener('pointercancel',cancelSetup);$('swingButton').
 $('swingButton').addEventListener('keydown',e=>{if(e.code==='Enter'&&!e.repeat){e.preventDefault();beginCharge();}});$('swingButton').addEventListener('keyup',e=>{if(e.code==='Enter'){e.preventDefault();releasePower();}});
 $('clubPrev').onclick=()=>changeClub(-1);$('clubNext').onclick=()=>changeClub(1);$('cameraButton').onclick=()=>{$('mobileDetailsDialog').close();toggleView();};$('gridButton').onclick=()=>{$('mobileDetailsDialog').close();greenGrid=!greenGrid;updateUI();};
 $('helpButton').onclick=()=>{cancelSetup();$('helpDialog').showModal();};$('scoreButton').onclick=showScore;$('resultScorecard').onclick=showScore;
+function renderMusicControls(){
+ for(const id of ['homeMusic','mobileMusic']){$(id).textContent=music.enabled?'Music on':'Music off';$(id).setAttribute('aria-pressed',String(music.enabled));}
+ for(const id of ['homeMusicVolume','mobileMusicVolume']){$(id).value=Math.round(music.volume*100);$(id+'Value').textContent=Math.round(music.volume*100)+'%';}
+}
+for(const id of ['homeMusic','mobileMusic'])$(id).onclick=()=>{music.setEnabled(!music.enabled);renderMusicControls();};
+for(const id of ['homeMusicVolume','mobileMusicVolume'])$(id).oninput=()=>{music.setVolume(Number($(id).value)/100);renderMusicControls();};
+renderMusicControls();
 $('soundButton').onclick=()=>{sound=!sound;$('soundButton').setAttribute('aria-label',sound?'Turn sound off':'Turn sound on');$('soundButton').querySelector('.off-mark').hidden=sound;if(sound)playTone('bounce');};
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>b.closest('dialog').close();
 for(const d of document.querySelectorAll('dialog')){d.addEventListener('click',e=>{if(e.target===d&&d.id!=='holeDialog'){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});if(d.id==='holeDialog')d.addEventListener('cancel',e=>e.preventDefault());}
@@ -358,6 +367,7 @@ window.addEventListener('keydown',e=>{if(replay){if(e.code==='Escape')stopReplay
 window.addEventListener('keyup',e=>{if(e.code==='Space'){e.preventDefault();releasePower();}if(e.code==='ArrowLeft'||e.code==='ArrowRight')aimKey=0;});window.addEventListener('blur',cancelSetup);document.addEventListener('visibilitychange',()=>{if(document.hidden)cancelSetup();});
 let last=performance.now(),accum=0,uiClock=0,aimClock=0;
 function animate(now){
+ music.setQuiet(['power','accuracy','downswing'].includes(phase));
   const dt=Math.min((now-last)/1000,.05);last=now;if(replay){if(!document.hidden)playReplay(dt);requestAnimationFrame(animate);return;}const paused=isModal()||document.hidden||homeOpen,flightRate=ball.moving&&fastForward?4:1;
   if(!paused){
     if((aimKey||pointerAim)&&ready()){aimClock+=dt;if(aimClock>.035){aimDelta((aimKey||pointerAim)*aimClock*(clubIndex===PUTTER_INDEX?.15:.32));aimClock=0;}}

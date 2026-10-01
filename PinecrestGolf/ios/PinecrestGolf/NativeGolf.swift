@@ -27,7 +27,8 @@ struct NativeSummary: Decodable {
     let courses: [NativeCourse]
     let clubs: [NativeClub]
     let stats: NativeStats
-    let resume, sound: Bool
+    let resume, sound, musicEnabled: Bool
+    let musicVolume: Double
 }
 
 // Only files shipped in the app are exposed to the offline WebKit renderer.
@@ -301,6 +302,12 @@ struct NativeClubhouse: View {
         Section("Play") {
             Toggle("Swing feedback on supported iPhones", isOn: $game.haptics)
             Toggle("Game sound", isOn: Binding(get: { game.summary?.sound ?? true }, set: { game.send("sound", $0); game.send("status") }))
+            Toggle("Background music", isOn: Binding(get: { game.summary?.musicEnabled ?? true }, set: { game.send("music", $0); game.send("status") }))
+            VStack(alignment: .leading) {
+                Text("Music volume · \(Int((game.summary?.musicVolume ?? 0.3) * 100))%")
+                Slider(value: Binding(get: { game.summary?.musicVolume ?? 0.3 }, set: { game.send("musicVolume", $0); game.send("status") }), in: 0...1, step: 0.05)
+                    .accessibilityLabel("Music volume")
+            }
             Button("Customize golfer") { game.send("character") }
             Button("Tutorial") { game.send("tutorial") }
         }

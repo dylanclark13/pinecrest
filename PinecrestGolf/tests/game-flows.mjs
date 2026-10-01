@@ -1,3 +1,4 @@
+import {createGolfMusic} from '../web/music.js';
 import {GreenskeeperGame,KEEPER_TOOLS} from '../web/greenskeeper.js';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -15,7 +16,7 @@ const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Elem
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
 class Renderer{constructor(){this.eye=[2,3,6];this.center=[0,0,0];this.trees=[]}loadHole(h){this.h=h}render(state){assert(state.hole);assert(Number.isFinite(state.ball.x));renderCalls++}pointOnCourse(){return null}}
-const context=vm.createContext({GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
+const context=vm.createContext({createGolfMusic,GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
 const source=fs.readFileSync(new URL('../web/game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');vm.runInContext(source,context);
 await new Promise(r=>setImmediate(r));const run=s=>vm.runInContext(s,context);
 run("for(const el of document.querySelectorAll('dialog[open]'))el.close()");for(const e of elements.values())e.close();

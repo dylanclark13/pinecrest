@@ -237,3 +237,5 @@
 
 
 .hud-layout .fast-forward-shot{pointer-events:auto;min-height:44px;background:#19352df2;border-color:#dafa9a88;color:#dafa9a;padding:10px 18px}.hud-layout .fast-forward-shot[aria-pressed=true]{background:#dafa9a;color:#16382e}@media(max-width:760px),(max-height:500px) and (pointer:coarse){.hud-layout .fast-forward-shot{width:100%;margin:4px 0;min-height:44px}}
+
+.music-controls{display:flex;align-items:center;flex-wrap:wrap;gap:12px 18px;padding:16px 0;border-top:1px solid #ffffff24}.music-controls button{min-height:44px}.music-controls label{display:flex;gap:12px;font-size:14px;margin:0}.music-controls output{min-width:3ch;font-variant-numeric:tabular-nums}.music-controls input[type=range]{width:160px;max-width:100%;min-height:44px;accent-color:#dafa9a}.music-controls button[aria-pressed=true]{border-color:#dafa9a;color:#dafa9a}
