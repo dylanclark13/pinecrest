@@ -27,3 +27,9 @@ for(const tool of KEEPER_TOOLS){
 }
 assert(keeperReaction({tool:'broom',elapsed:.3}).swivel>1);
 console.log('PASS contact timing, dramatic recoil, recovery and reduced motion for all tools');
+for(const quality of ['idle','miss','solid','perfect'])for(const tool of KEEPER_TOOLS){
+ renderer.render({view:'greenskeeper',keeper:{tool:tool.id,elapsed:.3,quality,closeView:true,reduced:false}},1/60);
+ if(quality==='miss')assert.equal(keeperReaction({tool:tool.id,elapsed:.3,quality}).amount,0,'miss does not produce a contact reaction');
+}
+assert(keeperReaction({tool:'fist',elapsed:.3,quality:'perfect'}).amount>keeperReaction({tool:'fist',elapsed:.3,quality:'solid'}).amount);
+console.log('PASS close-up camera and distinct miss, solid, and perfect reaction geometry');

@@ -6,6 +6,17 @@ export function addOffice(m){
  for(let x=-3.4;x<3.5;x+=.28)m.box([x,.004,0],[.007,.007,7],[.25,.21,.17]);
  m.box([0,1.7,-2.3],[7,3.4,.14],[.65,.69,.59]);m.box([-3.1,1.7,0],[.14,3.4,4.6],[.50,.57,.46]);
  m.box([0,.12,-2.2],[6.2,.24,.06],wood);m.box([-3,.12,0],[.06,.24,4.5],wood);
+ // Rug, layered contact shadows, and sunlight across the timber floor.
+ m.box([0,.012,-.15],[2.65,.016,2.0],[.25,.29,.23]);
+ for(const x of[-1.27,1.27])m.box([x,.023,-.15],[.026,.004,1.94],[.52,.48,.34]);
+ for(const z of[-1.10,.80])m.box([0,.023,z],[2.56,.004,.025],[.52,.48,.34]);
+ for(let i=0;i<5;i++){const size=1-i*.12;m.sphere(0,.026+i*.001,-.4,.65*size,.001,.56*size,[.21-i*.012,.25-i*.012,.20-i*.012],4,28);}
+ m.quad([-2.2,.013,-.8],[-1.0,.013,-.8],[.5,.013,2.2],[-.7,.013,2.2],[.49,.43,.31]);
+ // Terracotta planter with individual leaves beside the cabinet.
+ m.cone(2.68,0,-1.68,.16,.32,[.49,.28,.17],20,.21);m.cone(2.68,.30,-1.68,.225,.05,[.56,.32,.19],20,.225);m.sphere(2.68,.35,-1.68,.20,.009,.20,[.16,.12,.08],5,20);
+ for(let i=0;i<9;i++){const a=i/9*tau,y=.50+(i%3)*.12,x=2.68+Math.cos(a)*.23,z=-1.68+Math.sin(a)*.23;m.tube([2.68,.34,-1.68],[x,y,z],.008,.004,[.23,.34,.15],7);m.sphere(x,y,z,.07,.025,.16,[.23+(i%3)*.025,.38,.16],7,12);}
+ // Window blinds give the frame depth.
+ for(let y=2.42;y<2.70;y+=.06)m.box([-1.65,y,-2.04],[1.55,.018,.10],[.77,.77,.65]);
  // Window with sill, sky, distant fairway and timber mullions.
  m.box([-1.65,1.95,-2.20],[1.65,1.55,.07],wood);m.box([-1.65,1.95,-2.15],[1.47,1.37,.04],[.48,.72,.81]);
  m.box([-1.65,1.46,-2.11],[1.47,.36,.025],[.29,.48,.22]);
@@ -34,9 +45,9 @@ export function addOffice(m){
  m.tube([2.04,2.35,-2.045],[2.04,2.49,-2.045],.008,.008,rubber,6);m.tube([2.04,2.35,-2.045],[2.14,2.30,-2.045],.009,.009,rubber,6);
 }
 export function keeperReaction(k){
- const t=k.elapsed-.16;
- if(k.reduced||t<=0||t>=1.45)return {amount:0,swivel:0,rock:0,hat:0};
- const amount=t<.14?Math.sin(t/.14*Math.PI/2):Math.pow(1-(t-.14)/1.31,2);
+ const t=k.elapsed-.18;
+ if(k.reduced||k.quality==='miss'||t<=0||t>=1.45)return {amount:0,swivel:0,rock:0,hat:0};
+ const strength=k.quality==='solid'?.62:k.quality==='perfect'?1.12:1,amount=(t<.14?Math.sin(t/.14*Math.PI/2):Math.pow(1-(t-.14)/1.31,2))*strength;
  const side=['hand','broom','shovel'].includes(k.tool),big=k.tool==='glove'||k.tool==='mallet';
  return {amount,swivel:side?amount*(k.tool==='broom'?1.4:.85):Math.sin(t*16)*amount*.13,rock:amount*(big?.28:.13),hat:amount*(k.tool==='squeaky'?.52:.23)};
 }
@@ -47,10 +58,10 @@ export function addSeatedKeeper(scene,time,k){
  for(let i=0;i<5;i++){const a=i/5*tau,x=Math.cos(a)*.34,z=-.4+Math.sin(a)*.34;m.tube([0,.15,-.4],[x,.09,z],.027,.022,rubber,9);m.sphere(x,.055,z,.055,.05,.037,rubber,7,10);}
  m.box([0,.52,-.40],[.56,.11,.53],rubber);m.box([0,.96,-.67],[.53,.78,.10],[.13,.17,.15]);
  for(const side of[-1,1]){m.tube([side*.29,.54,-.49],[side*.29,.76,-.41],.025,.025,steel,9);m.box([side*.29,.78,-.28],[.07,.05,.34],rubber);}
- const body=new m.constructor();
+ const body=new m.constructor(),breath=k.reduced?0:Math.sin(time*1.9)*.008,idle=k.reduced?0:Math.sin(time*.65)*.035,duck=k.quality==='miss'&&!k.reduced&&k.elapsed<.7?Math.sin(k.elapsed/.7*Math.PI)*.12:0;
  // Bent knees and planted boots make the seated posture explicit.
  for(const side of[-1,1]){const hip=[side*.14,.59,-.40],knee=[side*.18,.52,-.02],ankle=[side*.18,.14,.05];body.tube(hip,knee,.10,.085,[.29,.25,.18],14);body.sphere(...knee,.088,.082,.089,[.29,.25,.18],8,12);body.tube(knee,ankle,.079,.063,[.29,.25,.18],14);body.sphere(side*.18,.083,.14,.089,.075,.17,[.19,.14,.10],9,14);body.box([side*.18,.029,.14],[.17,.035,.30],rubber);}
- body.ellipsoidBetween([0,.58,-.40],[0,1.09,-.43],.22,.14,shirt,20);body.sphere(0,1.08,-.43,.23,.07,.15,shirt,10,16);
+ body.ellipsoidBetween([0,.58,-.40],[0,1.09,-.43],.22+breath,.14+breath*.5,shirt,24);body.sphere(0,1.08,-.43,.23,.07,.15,shirt,10,16);
  body.tube([0,1.09,-.42],[0,1.20,-.42],.065,.06,skin,12);
  for(const s of[-1,1]){
  body.tube([s*.02,1.12,-.28],[s*.1,1.035,-.28],.023,.012,[.10,.21,.14],10);
@@ -59,6 +70,7 @@ export function addSeatedKeeper(scene,time,k){
  for(let i=0;i<4;i++){const x=wrist[0]+(i-1.5)*.022;body.tube([x,wrist[1],wrist[2]+.02],[x+(i-1.5)*reaction*.014,wrist[1]+reaction*.09,wrist[2]+.09],.009,.008,skin,7);}
  }
  body.box([.11,1.005,-.273],[.10,.075,.015],[.76,.75,.56]);for(let i=0;i<3;i++)body.sphere(0,1.01-i*.085,-.275,.008,.008,.008,[.79,.79,.70],4,6);
+ for(const side of[-1,1]){body.tube([side*.17,.63,-.30],[side*.19,.98,-.30],.002,.002,[.12,.24,.17],6);body.tube([side*.08,.74,-.262],[side*.15,.81,-.275],.003,.002,[.12,.24,.17],6);}
  const blink=!k.reduced&&Math.sin(time*.8)> .998;
  body.sphere(0,1.32,-.42,.113,.155,.104,skin,16,24);body.sphere(0,1.245,-.386,.09,.065,.079,skin,10,16);
  body.sphere(0,1.428,-.439,.117,.057,.10,[.28,.23,.18],10,18);
@@ -66,7 +78,7 @@ export function addSeatedKeeper(scene,time,k){
  body.sphere(0,1.315,-.302,.020,.033,.027,skin,8,12);body.sphere(0,1.267,-.308,.030,.004+reaction*.025,.005,[.28,.14,.09],8,12);
  // Separate cap crown, visor, seams and badge.
  body.sphere(0,1.457+r.hat,-.43,.127,.057,.116,shirt,12,20);body.sphere(0,1.451+r.hat,-.308,.14,.012,.10,shirt,7,18);body.box([0,1.48+r.hat,-.324],[.05,.029,.01],[.80,.77,.52]);
- m.addTransformed(body,p=>[p[0]+sway*Math.max(0,p[1]-.55),p[1],p[2]-lean*Math.max(0,p[1]-.55)]);
+ m.addTransformed(body,p=>[p[0]+(sway+idle)*Math.max(0,p[1]-.55),p[1]+breath*Math.max(0,p[1]-.6)-duck*Math.max(0,p[1]-.6),p[2]-(lean+duck)*Math.max(0,p[1]-.55)]);
  if(reaction>0)for(let i=0;i<8;i++){const a=i/8*tau+time*4;m.sphere(Math.cos(a)*(.24+reaction*.1),1.61+Math.sin(a)*.07,-.42+Math.sin(a)*.2,.027,.027,.027,k.tool==='hose'?[.42,.77,.89]:[.98,.82,.34],5,7);}
  // Chair and occupant recoil together, then recover to the seated pose.
  scene.addTransformed(m,p=>{const y=p[1]-.12,z=p[2]+.4,yy=y*Math.cos(r.rock)+z*Math.sin(r.rock),zz=-y*Math.sin(r.rock)+z*Math.cos(r.rock);return [p[0]*Math.cos(r.swivel)+zz*Math.sin(r.swivel),yy+.12+reaction*.07,-p[0]*Math.sin(r.swivel)+zz*Math.cos(r.swivel)-.4-reaction*.24];});
@@ -129,6 +141,8 @@ export function addKeeperTool(m,time,k){
  }
  const bare=k.tool==='fist'||k.tool==='hand'||k.tool==='glove',angle=bare?(k.tool==='hand'?-.45+a*1.1:0):-.28+a*.48;
  const target=bare?(k.tool==='hand'?[.54-a*.62,1.30,.57-a*.83]:[.20-a*.17,1.25,.63-a*.88]):[.56-a*.52,.78,.62-a*.87];
- m.addTransformed(tool,p=>[target[0]+p[0]*Math.cos(angle)-p[1]*Math.sin(angle),target[1]+p[0]*Math.sin(angle)+p[1]*Math.cos(angle),target[2]+p[2]]);
- if(k.tool==='hose'&&t<.55)for(let i=0;i<22;i++){const f=((i/22+time*2)%1),q=mix([target[0],target[1]+.15,target[2]-.23],[0,1.29,-.31],f);m.sphere(q[0]+Math.sin(i*3)*f*.06,q[1]-Math.sin(f*Math.PI)*.045,q[2],.012,.018,.025,[.51,.80,.93],5,8);}
+ const contacts={fist:[0,.10,-.08],hand:[0,.15,-.007],glove:[0,.10,-.11],hose:[0,.15,-.23],rake:[0,.65,-.10],mallet:[-.20,.80,0],shovel:[0,.90,.035],plunger:[0,.70,0],broom:[0,.50,0],squeaky:[-.25,.76,0]},contact=contacts[k.tool]||[0,.75,0];
+ const rotate=p=>[p[0]*Math.cos(angle)-p[1]*Math.sin(angle),p[0]*Math.sin(angle)+p[1]*Math.cos(angle),p[2]],head=rotate(contact),strike=[k.quality==='miss'?.46:0,1.30,-.30],origin=mix(target,strike.map((v,i)=>v-head[i]),a);
+ m.addTransformed(tool,p=>rotate(p).map((v,i)=>v+origin[i]));
+ if(k.tool==='hose'&&t<.55&&k.quality!=='idle')for(let i=0;i<22;i++){const f=((i/22+time*2)%1),q=mix([origin[0],origin[1]+.15,origin[2]-.23],[strike[0],1.29,-.31],f);m.sphere(q[0]+Math.sin(i*3)*f*.06,q[1]-Math.sin(f*Math.PI)*.045,q[2],.012,.018,.025,[.51,.80,.93],5,8);}
 }

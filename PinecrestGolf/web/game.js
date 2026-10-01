@@ -304,18 +304,26 @@ $('spinButton').onclick=()=>{if(!ready()||clubIndex===PUTTER_INDEX)return;syncSp
 $('backSpin').oninput=e=>{if(phase==='ready'){spinBack=Number(e.target.value)/100;syncSpin();}};$('sideSpin').oninput=e=>{if(phase==='ready'){spinShape=Number(e.target.value)/100;syncSpin();}};$('resetSpin').onclick=()=>{spinBack=0;spinShape=0;syncSpin();};
 function renderKeeperUI(){
  $('keeperScore').textContent=keeper.score;$('keeperTime').textContent=Math.ceil(keeper.time)+'s';$('keeperBest').textContent=keeper.best;$('keeperNeedle').style.left=(keeper.marker*100)+'%';
- $('keeperFeedback').textContent=keeper.message;$('keeperHit').disabled=!keeper.running||keeper.cooldown>0||keeperRenderFailed;$('keeperHit').textContent=keeper.cooldown>0?'Ready in '+keeper.cooldown.toFixed(1)+'s':KEEPER_TOOLS[keeper.tool].verb;$('keeperStart').textContent=keeper.running?'Restart round':'Start 30 second round';
+ if($('keeperFeedback').textContent!==keeper.message)$('keeperFeedback').textContent=keeper.message;
+ $('keeperDifficulty').disabled=keeper.running;$('keeperDifficultyHint').textContent=keeper.settings.description;$('keeperSelectedTool').textContent=KEEPER_TOOLS[keeper.tool].name;
+ $('keeperToolInfo').textContent=KEEPER_TOOLS[keeper.tool].name+' · '+KEEPER_TOOLS[keeper.tool].points+' points · '+Math.max(.6,KEEPER_TOOLS[keeper.tool].cooldown)+'s recovery';
+ $('keeperAccuracy').textContent=keeper.accuracy+'%';$('keeperPerfects').textContent=keeper.perfects;$('keeperCombo').textContent=(1+keeper.combo)+'×';
+ $('keeperTarget').style.left=(50-keeper.settings.window*100)+'%';$('keeperTarget').style.width=keeper.settings.window*200+'%';$('keeperPerfectZone').style.left=(50-keeper.settings.perfect*100)+'%';$('keeperPerfectZone').style.width=keeper.settings.perfect*200+'%';$('keeperHit').disabled=!keeper.running||keeper.cooldown>0||keeperRenderFailed;$('keeperHit').textContent=keeper.cooldown>0?'Ready in '+keeper.cooldown.toFixed(1)+'s':KEEPER_TOOLS[keeper.tool].verb;$('keeperStart').textContent=keeper.running?'Restart round':'Start 30 second round';
  for(let i=0;i<KEEPER_TOOLS.length;i++)$('keeperTool'+i).setAttribute('aria-pressed',String(keeper.tool===i));
 }
 function updateKeeper(dt){
  if(!keeperRenderer&&!keeperRenderFailed)try{keeperRenderer=new GolfRenderer($('keeperCanvas'));}catch(e){keeperRenderFailed=true;$('keeperRenderError').hidden=false;$('keeperStart').disabled=true;}
- keeper.update(dt);renderKeeperUI();if(!keeperRenderer)return;
- const h=COURSES[0].holes[0];keeperRenderer.render({hole:h,ball:makeBall(h),angle:0,view:'greenskeeper',moving:false,trail:[],power:0,clubIndex:PUTTER_INDEX,keeper:{elapsed:keeper.effect,tool:keeper.effectTool,reduced:window.matchMedia('(prefers-reduced-motion: reduce)').matches},actor:{x:0,z:0,angle:0,club:CLUBS[PUTTER_INDEX],appearance:{skin:1,shirt:5,pants:2,cap:3,hat:true},phase:'follow',progress:1,power:.4}},dt);
+ const before=keeper.effect;keeper.update(dt);
+ if(before<.18&&keeper.effect>=.18&&keeper.quality!=='idle'&&keeper.quality!=='miss'){playTone(keeper.effectTool==='hose'?'water':keeper.quality==='perfect'?'pure':'hit');window.golfHaptic?.(keeper.quality==='perfect'?'perfect':'hit');}
+ renderKeeperUI();if(!keeperRenderer)return;
+ const h=COURSES[0].holes[0];keeperRenderer.render({hole:h,ball:makeBall(h),angle:0,view:'greenskeeper',moving:false,trail:[],power:0,clubIndex:PUTTER_INDEX,keeper:{elapsed:keeper.effect,tool:keeper.effectTool,quality:keeper.quality,closeView:keeper.closeView,reduced:window.matchMedia('(prefers-reduced-motion: reduce)').matches},actor:{x:0,z:0,angle:0,club:CLUBS[PUTTER_INDEX],appearance:{skin:1,shirt:5,pants:2,cap:3,hat:true},phase:'follow',progress:1,power:.4}},dt);
 }
 $('greenskeeperTab').onclick=()=>{setHomeTab('greenskeeper');renderKeeperUI();};
-for(let i=0;i<KEEPER_TOOLS.length;i++)$('keeperTool'+i).onclick=()=>{keeper.tool=i;if(keeper.cooldown===0){keeper.effectTool=KEEPER_TOOLS[i].id;keeper.effect=2;}renderKeeperUI();};
+for(let i=0;i<KEEPER_TOOLS.length;i++)$('keeperTool'+i).onclick=()=>{keeper.tool=i;if(keeper.cooldown===0){keeper.effectTool=KEEPER_TOOLS[i].id;keeper.effect=2;keeper.quality='idle';}renderKeeperUI();};
 $('keeperStart').onclick=()=>{keeper.start();renderKeeperUI();};
-$('keeperHit').onclick=()=>{if(keeper.strike()){playTone(keeper.effectTool==='hose'?'water':'hit');window.golfHaptic?.('hit');}renderKeeperUI();};
+$('keeperHit').onclick=()=>{keeper.strike();renderKeeperUI();};
+$('keeperDifficulty').onchange=e=>{keeper.setDifficulty(e.target.value);renderKeeperUI();};
+$('keeperCamera').onclick=()=>{keeper.closeView=!keeper.closeView;$('keeperCamera').setAttribute('aria-pressed',String(keeper.closeView));$('keeperCamera').textContent=keeper.closeView?'Office view':'Close-up view';};
 $('playTab').onclick=()=>setHomeTab('play');$('equipmentTab').onclick=()=>setHomeTab('equipment');$('homeRetry').onclick=loadCareer;$('resumeRound').onclick=resumeSavedRound;$('retryScore').onclick=saveHoleResult;
 $('courseButton').onclick=showCourses;$('startRound').onclick=startSelectedRound;
 $('swingButton').addEventListener('pointerdown',e=>{if(e.button!==0)return;e.preventDefault();$('swingButton').setPointerCapture(e.pointerId);beginCharge();});
