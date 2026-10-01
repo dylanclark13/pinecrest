@@ -49,7 +49,7 @@ function updateUI(){
   $('swingText').textContent=phase==='accuracy'?'Tap to strike':phase==='power'?'Release for timing':phase==='downswing'?'Swinging…':phase==='flight'?'Ball in play':finished?'Hole complete':'Hold to swing';
   $('powerTitle').textContent=phase==='power'?'1 · SET YOUR POWER':phase==='accuracy'?'POWER LOCKED':'SWING POWER';
   $('aimTip').style.opacity=phase==='ready'?'1':'0';$('clubPrev').disabled=$('clubNext').disabled=phase!=='ready';
-  $('fastForwardShot').hidden=!ball.moving||homeOpen||!!replay;$('fastForwardShot').setAttribute('aria-pressed',String(fastForward));$('fastForwardShot').textContent=fastForward?'Normal speed':'Fast-forward 4×';
+  updateFastForwardControl();
   $('flightReadout').hidden=!ball.moving;$('timingPanel').hidden=phase!=='accuracy';$('timingMarker').style.left=(timingNeedle+1)*50+'%';
   $('swingButton').classList.toggle('timing-active',phase==='accuracy');
   $('statusLine').textContent=phase==='accuracy'?'TAP SPACE OR THE BUTTON AS THE MARKER CROSSES THE CENTER':phase==='downswing'?'KEEP YOUR EYE ON THE BALL':ball.moving?'BALL IN PLAY · '+lastStrike:finished?'HOLE COMPLETE':lie==='green'?'FAST GREEN · READ THE BREAK':lie==='sand'?'DEEP BUNKER · WEDGE RECOMMENDED':lie==='rough'?'DEEP ROUGH · '+Math.round(hole.roughFactor*100)+'% CARRY':strokes===0?'CHAMPIONSHIP TEES · TIMED STRIKES':'FIND YOUR LINE · COMMIT TO THE SHOT';
@@ -96,10 +96,9 @@ function commitStrike(){
   const timingWindow=Math.min(.30,hole.sweetSpot*activeClub().forgiveness*(clubIndex===PUTTER_INDEX?1.15:1));const pure=Math.abs(timingNeedle)<timingWindow,perfect=Math.abs(timingNeedle)<timingWindow*.20;accuracy=pure?0:Math.sign(timingNeedle)*(Math.abs(timingNeedle)-timingWindow)/(1-timingWindow);
   lastStrike=perfect?'PERFECT STRIKE':pure?'PURE STRIKE':Math.abs(accuracy)<.2?'SOLID CONTACT':accuracy<0?'EARLY · HOOK':'LATE · SLICE';
   if(clubIndex===PUTTER_INDEX&&!pure)lastStrike=accuracy<0?'PULLED PUTT':'PUSHED PUTT';
-  phase='downswing';downswingTime=0;actor.phase='downswing';actor.progress=0;actor.power=power;actor.club=activeClub();actor.angle=angle;actor.pure=pure;actor.perfect=perfect;actor.cinematic=perfect&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches;recording={hole,frames:[],time:0,label:lastStrike,putt:clubIndex===PUTTER_INDEX,distance:Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])*YD*3};captureReplay(0);updateUI();
+  fastForward=false;phase='downswing';downswingTime=0;actor.phase='downswing';actor.progress=0;actor.power=power;actor.club=activeClub();actor.angle=angle;actor.pure=pure;actor.perfect=perfect;actor.cinematic=perfect&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches;recording={hole,frames:[],time:0,label:lastStrike,putt:clubIndex===PUTTER_INDEX,distance:Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])*YD*3};captureReplay(0);updateUI();
 }
 function impact(){
-  fastForward=false;
   lastLie={x:ball.x,z:ball.z};shotStart={...lastLie};shotDistance=0;shotCarry=0;shotInFlight=true;collisionCooldown=0;trail=[];if(surface(hole,ball.x,ball.z)==='green')holeMetrics.putts++;strokes++;
   launch(ball,hole,actor.club,power,angle,accuracy,{back:spinBack,shape:spinShape});phase='flight';followTime=0;actor.phase='follow';actor.progress=0;playTone(actor.perfect?'pure':'hit');window.golfHaptic(actor.perfect?'perfect':'hit');
   toast(lastStrike==='PURE STRIKE'?'Pure strike.':lastStrike.toLowerCase().replace(/^./,c=>c.toUpperCase()),1700);updateUI();drawMap();
@@ -359,7 +358,22 @@ renderMusicControls();
 $('soundButton').onclick=()=>{sound=!sound;$('soundButton').setAttribute('aria-label',sound?'Turn sound off':'Turn sound on');$('soundButton').querySelector('.off-mark').hidden=sound;if(sound)playTone('bounce');};
 for(const b of document.querySelectorAll('[data-close]'))b.onclick=()=>b.closest('dialog').close();
 for(const d of document.querySelectorAll('dialog')){d.addEventListener('click',e=>{if(e.target===d&&d.id!=='holeDialog'){const r=d.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)d.close();}});if(d.id==='holeDialog')d.addEventListener('cancel',e=>e.preventDefault());}
-$('fastForwardShot').onclick=()=>{if(ball.moving&&!homeOpen&&!replay&&!isModal()){fastForward=!fastForward;updateUI();}};
+function canFastForwardShot(){return (phase==='downswing'||ball.moving)&&!homeOpen&&!replay;}
+function updateFastForwardControl(){
+ const button=$('fastForwardShot'),label=fastForward?'Fast-forwarding 4×':'Fast-forward 4×';
+ button.hidden=!canFastForwardShot();button.disabled=fastForward;button.setAttribute('aria-pressed',String(fastForward));
+ if(button.textContent!==label)button.textContent=label;
+}
+function fastForwardCurrentShot(){
+ if(!canFastForwardShot()||isModal()||document.hidden||fastForward)return;
+ fastForward=true;updateFastForwardControl();
+}
+$('fastForwardShot').addEventListener('pointerdown',e=>{
+ if(e.button!==0||e.isPrimary===false)return;
+ e.preventDefault();fastForwardCurrentShot();
+});
+// Keyboard/assistive clicks also work; a synthesized click cannot undo a pointer press.
+$('fastForwardShot').onclick=fastForwardCurrentShot;
 $('nextHole').onclick=()=>{$('holeDialog').close();if(finalHole()){showCourses();}else{startHole(holeIndex+1);toast(hole.name+' · Par '+hole.par);}};
 canvas.addEventListener('pointerdown',e=>{if(e.button!==0)return;const p=renderer?.pointOnCourse(e.clientX,e.clientY);if(p)aimAt(...p);});
 map.addEventListener('pointerdown',e=>{if(!mapTransform)return;const r=map.getBoundingClientRect(),x=(e.clientX-r.left)*map.width/r.width,y=(e.clientY-r.top)*map.height/r.height;$('mobileDetailsDialog').close();aimAt((x-mapTransform.cx)/mapTransform.scale,(mapTransform.cz-y)/mapTransform.scale);});
@@ -369,13 +383,13 @@ window.addEventListener('keyup',e=>{if(e.code==='Space'){e.preventDefault();rele
 let last=performance.now(),accum=0,uiClock=0,aimClock=0;
 function animate(now){
  music.setQuiet(['power','accuracy','downswing'].includes(phase));
-  const dt=Math.min((now-last)/1000,.05);last=now;if(nativePaused){requestAnimationFrame(animate);return;}if(replay){if(!document.hidden)playReplay(dt);requestAnimationFrame(animate);return;}const paused=isModal()||document.hidden||homeOpen,flightRate=ball.moving&&fastForward?4:1;
+  const dt=Math.min((now-last)/1000,.05);last=now;if(nativePaused){requestAnimationFrame(animate);return;}if(replay){if(!document.hidden)playReplay(dt);requestAnimationFrame(animate);return;}const paused=isModal()||document.hidden||homeOpen,flightRate=(phase==='downswing'||ball.moving)&&fastForward?4:1;
   if(!paused){
     if((aimKey||pointerAim)&&ready()){aimClock+=dt;if(aimClock>.035){aimDelta((aimKey||pointerAim)*aimClock*(clubIndex===PUTTER_INDEX?.15:.32));aimClock=0;}}
     if(phase==='power'){chargeTime+=dt;const t=(chargeTime/(clubIndex===PUTTER_INDEX?1.25:1.05))%2;power=clamp(t<=1?t:2-t,.008,1);actor.progress=Math.min(1,chargeTime/.2);actor.power=power;}
     if(phase==='accuracy'){timingTime+=dt;const speed=clubIndex===PUTTER_INDEX?hole.timingSpeed*.66:hole.timingSpeed,t=(timingTime*speed)%2;timingNeedle=-1+2*(t<=1?t:2-t);if(timingTime>3){timingNeedle=1;commitStrike();}}
-    if(phase==='downswing'){downswingTime+=dt;const duration=actor.cinematic?(actor.club.type==='putter'?.42:.70):(actor.club.type==='putter'?.16:.20),t=clamp(downswingTime/duration,0,1);actor.progress=actor.cinematic?(t<.8?t*.45:.36+(t-.8)*3.2):t;if(downswingTime>=duration)impact();}
-    if(actor?.phase==='follow'){followTime+=dt;actor.progress=clamp(followTime/.60,0,1);}
+    if(phase==='downswing'){downswingTime+=dt*flightRate;const duration=actor.cinematic?(actor.club.type==='putter'?.42:.70):(actor.club.type==='putter'?.16:.20),t=clamp(downswingTime/duration,0,1);actor.progress=actor.cinematic?(t<.8?t*.45:.36+(t-.8)*3.2):t;if(downswingTime>=duration)impact();}
+    if(actor?.phase==='follow'){followTime+=dt*flightRate;actor.progress=clamp(followTime/.60,0,1);}
     if(ball.moving){accum+=dt*flightRate;for(let i=0;i<32&&accum>=1/120&&ball.moving;i++){
       accum-=1/120;const previous={x:ball.x,z:ball.z},event=stepBall(ball,hole,1/120);shotDistance=Math.hypot(ball.x-shotStart.x,ball.z-shotStart.z);collisionCooldown-=1/120;
       if(collisionCooldown<=0&&ball.moving)for(const t of renderer.trees){const distance=Math.hypot(ball.x-t.x,ball.z-t.z),trunk=distance<(t.r||.5)+.08&&ball.y<t.y+t.h*.68,canopy=distance<t.canopy*.8&&ball.y>t.y+t.h*.48&&ball.y<t.y+t.h;if(trunk||canopy){ball.vx*=trunk?-.32:.46;ball.vz*=trunk?-.32:.46;ball.vy*=.65;if(trunk){ball.x=previous.x;ball.z=previous.z;}collisionCooldown=.7;toast(trunk?'Caught the trunk.':'Clipped the canopy.');break;}}

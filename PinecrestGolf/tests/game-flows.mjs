@@ -65,3 +65,18 @@ function timedShot(fast,shotPower,shotAccuracy){
 for(const [power,accuracy]of[[.7,0],[.95,.6]]){const regular=timedShot(false,power,accuracy),quick=timedShot(true,power,accuracy);assert.equal(quick.result,regular.result,'fast-forward preserves shot outcome');assert(quick.frames<regular.frames*.3,'4x speed finishes much sooner');}
 run('updateUI()');assert.equal(elements.get('fastForwardShot').hidden,true);
 console.log('PASS normal and off-center shots land identically at 1x and 4x; button hides after landing');
+
+// Exercise actual input handlers, including a press before impact and duplicate clicks.
+for(const e of elements.values())e.close();
+run("showCourses();startPractice('range');phase='accuracy';power=.7;timingNeedle=.5;commitStrike()");
+const forward=elements.get('fastForwardShot');assert.equal(forward.hidden,false);
+let prevented=false;forward.listeners.pointerdown({button:0,isPrimary:true,preventDefault(){prevented=true;}});
+assert(prevented);assert.equal(run('fastForward'),true);assert.equal(forward.disabled,true);
+forward.click();forward.click();assert.equal(run('fastForward'),true,'extra taps never cancel fast-forward');
+run('impact()');assert.equal(run('fastForward'),true,'pre-impact press survives ball contact');
+run("ball.moving=true;ball.airborne=false;phase='flight';fastForward=false;updateUI()");
+forward.click();assert.equal(run('fastForward'),true,'keyboard click works while rolling');
+run("ball.moving=false;phase='accuracy';timingNeedle=.5;commitStrike()");assert.equal(run('fastForward'),false,'new shot starts at normal speed');assert.equal(forward.disabled,false);
+run("$('helpDialog').showModal()");forward.click();assert.equal(run('fastForward'),false);elements.get('helpDialog').close();
+run("phase='ready';ball.moving=false;updateUI()");forward.click();assert.equal(run('fastForward'),false);assert.equal(forward.hidden,true);
+console.log('PASS early pointer press, duplicate-click safety, impact persistence, rolling/keyboard activation and per-shot reset.');
