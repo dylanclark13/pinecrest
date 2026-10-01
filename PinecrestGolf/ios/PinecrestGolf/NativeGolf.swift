@@ -181,7 +181,6 @@ struct BundledGameView: UIViewRepresentable {
 
 struct NativeGolfView: View {
     @StateObject private var game = NativeGame()
-    @State private var launchNotice = true
     @Environment(\.scenePhase) private var scenePhase
     private var showsNativeToolbar: Bool {
         #if os(macOS)
@@ -199,28 +198,7 @@ struct NativeGolfView: View {
             }.padding(.horizontal).padding(.vertical, 8).background(Color(red: 0.06, green: 0.15, blue: 0.12)) }
             BundledGameView(game: game)
         }
-        .overlay {
-            if launchNotice {
-                ZStack(alignment: .topTrailing) {
-                    Color(red: 0.06, green: 0.15, blue: 0.12).ignoresSafeArea()
-                    Text("Victor sucks")
-                        .font(.system(size: 38, weight: .semibold))
-                        .multilineTextAlignment(.center)
-                        .padding(32)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    Button { launchNotice = false } label: {
-                        Image(systemName: "xmark")
-                            .font(.title2)
-                            .frame(width: 48, height: 48)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Close opening screen")
-                    .padding(16)
-                }
-                .foregroundStyle(.white)
-            }
-        }
-        .sheet(isPresented: Binding(get: { game.menu && !launchNotice }, set: { game.menu = $0 }), onDismiss: { game.send("wake") }) { NativeClubhouse(game: game) }
+        .sheet(isPresented: $game.menu, onDismiss: { game.send("wake") }) { NativeClubhouse(game: game) }
         .sheet(isPresented: $game.online, onDismiss: { game.menu = true }) {
             VStack { HStack { Text("Online career · Internet required"); Spacer(); Button("Done") { game.online = false } }.padding(); GolfView() }
         }

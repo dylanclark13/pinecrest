@@ -381,11 +381,6 @@ function animate(now){
   if(homeOpen&&homeTab==='greenskeeper'){updateKeeper(isModal()||document.hidden?0:dt);requestAnimationFrame(animate);return;}
   if(homeOpen){const h=COURSES[pendingCourse].holes[0],hb=makeBall(h);renderer?.render({ball:hb,hole:h,angle:0,view:homeTab==='character'?'character':homeTab==='equipment'?'equipment':'home',moving:false,trail:[],power:0,clubIndex:0,actor:{x:0,z:0,angle:0,club:upgradeClub(CLUBS[0],clubLevel(career,CLUBS[0].id)),appearance:homeTab==='character'?appearanceDraft:career.appearance,phase:'address',progress:0,power:.7}},dt);}else renderer?.render({ball,hole,angle,view,moving:ball.moving,trail,power,clubIndex,actor,greenGrid},paused?0:dt);requestAnimationFrame(animate);
 }
-function showLaunchNotice(){
- $('closeLaunchNotice').onclick=()=>$('launchNotice').close();
- $('launchNotice').addEventListener('close',()=>{if(profileLoaded&&!career.onboarded&&!onboardingSeen&&!isModal()){onboardingSeen=true;showOnboarding();}});
- $('launchNotice').showModal();
-}
 if(renderer){startHole(roundStart);renderHome();requestAnimationFrame(animate);}loadCareer();
 if(document.modelContext?.registerTool){
   const life=new AbortController(),register=tool=>{try{Promise.resolve(document.modelContext.registerTool(tool,{signal:life.signal})).catch(()=>{});}catch{}};
