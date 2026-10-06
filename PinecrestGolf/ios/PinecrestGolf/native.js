@@ -31,6 +31,8 @@ async function handle(path,options){try{
  if(path==='/api/checkpoint'){if(s.round?.status==='active'&&b.roundId===s.round.id&&b.hole===s.round.next_hole)s.checkpoint=b;else return json({ok:false});}
  else if(path==='/api/customize'){const name=String(b.displayName||'').trim();if(name.length<2||name.length>24||!validAppearance(b.appearance))throw Error('Choose a valid golfer name and appearance.');s.profile.displayName=name;s.profile.appearance=b.appearance;}
  else if(path==='/api/onboarding')s.profile.onboarded=true;
+ else if(path==='/api/impossible/start'){const id=nativeID();s.impossibleAwards??={};s.impossibleAwards[id]=false;extra={id};}
+ else if(path==='/api/impossible/reward'){if(!Number.isInteger(b.strokes)||b.strokes<1||b.strokes>20||!Object.hasOwn(s.impossibleAwards||{},b.id))throw Error('Invalid challenge completion.');if(!s.impossibleAwards[b.id]){s.profile.tokens+=1000;s.impossibleAwards[b.id]=true;}extra={earned:1000};}
  else if(path==='/api/upgrade'){const level=b.expectedLevel;if(!CLUB_IDS.includes(b.clubId)||!Number.isInteger(level)||level<0||level>=4)throw Error('Choose a valid upgrade.');const cost=UPGRADE_COSTS[level];if((s.profile.clubLevels[b.clubId]||0)!==level||s.profile.tokens<cost)throw Error('Not enough tokens, or club level changed.');s.profile.tokens-=cost;s.profile.clubLevels[b.clubId]=level+1;extra={spent:cost};}
  else if(path==='/api/rounds'||path==='/api/daily'){
  const daily=path==='/api/daily'?dailyChallenge():null,c=daily?daily.course:b.course,mode=daily?'daily':b.mode;

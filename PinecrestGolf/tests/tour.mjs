@@ -1,3 +1,4 @@
+import {inWater,surface} from '../web/physics.js';
 import assert from 'node:assert/strict';
 import {request} from './features.mjs';
 import {COURSES} from '../web/courses.js';
@@ -19,5 +20,15 @@ assert.equal((await request('/api/rounds/'+round.id+'/holes',{hole:53,strokes:4}
 assert.equal((await request('/api/stats',undefined,user)).body.stats.scoredHoles,54);
 const normal=(await request('/api/rounds',{course:0,mode:'full'},user)).body.round;assert.equal((await request('/api/rounds/'+normal.id+'/holes',{hole:18,strokes:4},user)).status,400);
 assert((await request('/api/records',undefined,user)).body.records.every(r=>r.personal===null));
-for(const course of COURSES){const rivals=createTourField('trajectory',course.holes,course.level);for(const p of rivals.slice(0,2))for(let h=0;h<54;h++)for(let shot=1;shot<=p.scores[h];shot++){const t=tourShot(course.holes[h%18],p,h,shot);assert([...t.from,...t.to,t.distance].every(Number.isFinite));if(t.holed)assert.deepEqual(t.to,course.holes[h%18].pin);}}
+for(const course of COURSES){const rivals=createTourField('trajectory',course.holes,course.level);for(const p of rivals.slice(0,2))for(let h=0;h<54;h++)for(let shot=1;shot<=p.scores[h];shot++){const t=tourShot(course.holes[h%18],p,h,shot);assert([...t.from,...t.to,t.distance].every(Number.isFinite));if(t.penalty){assert(inWater(course.holes[h%18],...t.from));assert(!inWater(course.holes[h%18],...t.to));}else assert(!inWater(course.holes[h%18],...t.from));if(t.putt)assert(['green','fringe'].includes(surface(course.holes[h%18],...t.from))); if(t.holed)assert.deepEqual(t.to,course.holes[h%18].pin);}}
 console.log('PASS 54-hole tournament save/resume, stable NPC field, standings, round boundaries, duplicate reward safety, account isolation, normal-round validation and NPC shot paths.');
+
+const wet={...holes[0],water:[[0,-170,100,100]]},rival=createTourField('wet',Array(18).fill(wet),8)[0];assert(rival.shots.some(plan=>plan.some(t=>t.penalty)));for(const plan of rival.shots)assert.equal(plan.filter(t=>t.penalty).length,plan.filter(t=>t.water).length);
+const u='reward-test',active=(await request('/api/rounds',{course:0,mode:'full'},u)).body.round;
+const attempt=(await request('/api/impossible/start',{},u)).body.id;
+assert.equal((await request('/api/impossible/reward',{id:attempt,strokes:21},u)).status,400);
+assert.equal((await request('/api/impossible/reward',{id:attempt,strokes:8},'other')).status,404);
+for(let i=0;i<2;i++){const reward=await request('/api/impossible/reward',{id:attempt,strokes:8},u);assert.equal(reward.status,200);assert.equal(reward.body.profile.tokens,1000);}
+assert.equal((await request('/api/profile',undefined,u)).body.round.id,active.id);
+assert.equal((await request('/api/stats',undefined,u)).body.stats.scoredHoles,0);
+console.log('PASS water penalties and dry NPC lies, green-only putts, 1,000-credit reward, retry deduplication, ownership and round/stat isolation.');

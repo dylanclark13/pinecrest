@@ -2,13 +2,14 @@
 let nativeCheckpointKey='',nativePaused=false,nativePublished=false;
 async function nativeCheckpoint(){
  if(practice||!hasRound||!roundId||finished||ball.moving||phase!=='ready')return;
- const value={roundId,hole:holeIndex,ball:{...ball},strokes,clubIndex,angle,spinBack,spinShape,holeMetrics:{...holeMetrics},greenGrid,view};
+ const value={roundId,hole:holeIndex,ball:{...ball},strokes,clubIndex,angle,spinBack,spinShape,puttScaleFeet,holeMetrics:{...holeMetrics},greenGrid,view};
  const key=JSON.stringify(value);if(key===nativeCheckpointKey)return;
  await api('/api/checkpoint',value);nativeCheckpointKey=key;
 }
 function restoreNativeCheckpoint(v){
  if(!v||v.roundId!==roundId||v.hole!==holeIndex||!v.ball||!['x','y','z'].every(k=>Number.isFinite(v.ball[k]))||!Number.isInteger(v.strokes)||v.strokes<0||v.strokes>12||!Number.isInteger(v.clubIndex)||v.clubIndex<0||v.clubIndex>=CLUBS.length||!Number.isFinite(v.angle))return;
  for(const g of tourGroup)g.strokes=Math.min(v.strokes,g.player.scores[holeIndex]);
+ puttScaleFeet=PUTT_SCALES.includes(v.puttScaleFeet)?v.puttScaleFeet:0;
  ball={...v.ball,moving:false,holed:false};strokes=v.strokes;clubIndex=v.clubIndex;angle=v.angle;spinBack=clamp(v.spinBack||0,-1,1);spinShape=clamp(v.spinShape||0,-1,1);holeMetrics=v.holeMetrics||holeMetrics;greenGrid=!!v.greenGrid;view=['follow','overhead','putting'].includes(v.view)?v.view:'follow';setAddress();syncSpin();updateSuggestion();drawMap();
 }
 async function nativeStatus(){

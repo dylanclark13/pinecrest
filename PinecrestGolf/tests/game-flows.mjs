@@ -109,7 +109,18 @@ run('beginCharge()');assert.equal(run('phase'),'power');assert.equal(elements.ge
 run('strokes=19;ball.moving=false;restAfterShot(true)');assert.equal(run('finished'),false);run('strokes=20;restAfterShot(true)');assert.equal(run('finished'),true);assert(elements.get('impossibleDialog').open);assert.equal(run('impossibleBest'),null);
 elements.get('impossibleAgain').click();assert.equal(run('strokes'),0);assert.equal(run('finished'),false);assert.equal(run('impossibleAttempts'),2);
 run('strokes=7;ball.holed=true;finishHole()');assert.equal(run('impossibleBest'),7);assert.equal(run('impossibleClears'),1);assert.equal(run('pendingScore'),null);assert.equal(run('JSON.stringify(career)'),beforeChallengeCareer);
+await run('impossibleAward.saving');assert.equal(run('career.tokens'),JSON.parse(beforeChallengeCareer).tokens+1000);await run('claimImpossibleReward()');assert.equal(run('career.tokens'),JSON.parse(beforeChallengeCareer).tokens+1000);
 elements.get('impossibleDone').click();assert.equal(run('JSON.stringify({roundId,roundMode,ball,strokes,scores,tourField,tourGroup})'),beforeChallenge);assert.equal(elements.get('homeImpossible').hidden,false);
 // Entering from a paused in-flight round still initializes a fresh challenge ball.
 run("ball.moving=true;phase='flight';startImpossible()");assert.equal(run('ball.moving'),false);assert.equal(run('phase'),'ready');run('exitImpossible()');assert.equal(run('ball.moving'),true);
 console.log('PASS Impossible Hole entry, swing input, 20-stroke failure, retry, success and active-tour/career isolation.');
+run("ball.moving=false;phase='ready';showCourses();startPractice('putting');puttScaleFeet=0;updateSuggestion()");
+const autoRange=run('activeClub().range');assert.equal(elements.get('puttScaleControl').hidden,false);
+elements.get('puttScale').value='360';elements.get('puttScale').onchange();assert.equal(run('activeClub().range'),120);assert.equal(run('actor.club.range'),120);assert(elements.get('puttScaleHint').textContent.includes('360 ft'));
+run('beginCharge()');assert.equal(elements.get('puttScale').disabled,true);elements.get('puttScale').value='30';elements.get('puttScale').onchange();assert.equal(run('puttScaleFeet'),360);run('cancelSetup()');
+elements.get('puttScale').value='0';elements.get('puttScale').onchange();assert.equal(run('activeClub().range'),autoRange);
+run('clubIndex=0;updateSuggestion()');assert.equal(elements.get('puttScaleControl').hidden,true);assert.equal(run('activeClub().range'),run('upgradeClub(CLUBS[0],clubLevel(career,CLUBS[0].id)).range'));
+console.log('PASS manual 360-foot putt scale, actual launch-club update, mid-swing lockout and Auto restoration.');
+const flat={...courses.COURSES[0].holes[0],pin:[100,-180],greenRadius:400,slope:[0,0],contour:0,elevation:0,water:[],sand:[],island:false};
+function puttRoll(range){const b=physics.makeBall(flat,0,-20);physics.launch(b,flat,{...physics.CLUBS[physics.PUTTER_INDEX],range},1,0,0);for(let i=0;i<5000&&b.moving;i++)physics.stepBall(b,flat,1/120);assert.equal(b.moving,false);return Math.hypot(b.x,b.z+20)*physics.YD*3;}
+assert(puttRoll(120)>320);assert(puttRoll(120)>puttRoll(10)*8);console.log('PASS longer putt scales produce longer physical rollout at full power.');

@@ -21,13 +21,26 @@ async function handle(request,env,user,account=null){
  if(request.method!=='GET'){const origin=request.headers.get('origin');if(origin&&origin!==url.origin)return json({error:'Invalid request origin.'},403);if(!request.headers.get('content-type')?.includes('application/json'))return json({error:'Use JSON for this request.'},415);}
  try{
   if(path==='/api/profile'&&request.method==='GET')return json({profile:await profile(env,user),round:await currentRound(env,user),guest:!account&&user.startsWith('guest:'),account:account?{email:account.email}:null});
+  if(path==='/api/impossible/start'&&request.method==='POST'){
+   const id=crypto.randomUUID();await ensurePlayer(env,user);
+   await db(env).prepare("INSERT INTO rounds(id,user_id,course,mode,next_hole,end_hole,status,created_at) VALUES(?,?,-1,'impossible',0,0,'challenge',?)").bind(id,user,Date.now()).run();return json({id});
+  }
+  if(path==='/api/impossible/reward'&&request.method==='POST'){
+   const b=await request.json();if(!Number.isInteger(b.strokes)||b.strokes<1||b.strokes>20)return json({error:'Finish within 20 strokes.'},400);
+   const r=await db(env).prepare("SELECT id FROM rounds WHERE id=? AND user_id=? AND mode='impossible'").bind(b.id,user).first();if(!r)return json({error:'Challenge not found.'},404);
+   const receipt=crypto.randomUUID();await db(env).batch([
+    db(env).prepare('INSERT OR IGNORE INTO round_holes(round_id,hole,strokes,xp,tokens,receipt) VALUES(?,0,?,0,1000,?)').bind(r.id,b.strokes,receipt),
+    db(env).prepare('UPDATE players SET tokens=tokens+1000 WHERE user_id=? AND EXISTS(SELECT 1 FROM round_holes WHERE round_id=? AND receipt=?)').bind(user,r.id,receipt),
+    db(env).prepare("UPDATE rounds SET status='complete' WHERE id=?").bind(r.id)
+   ]);return json({profile:await profile(env,user),earned:1000});
+  }
   if(path==='/api/customize'&&request.method==='POST'){
    const b=await request.json(),name=String(b.displayName||'').trim();if(name.length<2||name.length>24||!validAppearance(b.appearance))return json({error:'Choose a golfer name with 2 to 24 characters and valid colors.'},400);
    await ensurePlayer(env,user);await db(env).prepare('UPDATE players SET display_name=?,appearance=? WHERE user_id=?').bind(name,JSON.stringify(b.appearance),user).run();return json({profile:await profile(env,user)});
   }
   if(path==='/api/onboarding'&&request.method==='POST'){await ensurePlayer(env,user);await db(env).prepare('UPDATE players SET onboarded=1 WHERE user_id=?').bind(user).run();return json({profile:await profile(env,user)});}
   if(path==='/api/records'&&request.method==='GET'){
-   const rows=await db(env).prepare("WITH totals AS (SELECT r.course,r.mode,r.user_id,SUM(h.strokes) AS strokes FROM rounds r JOIN round_holes h ON h.round_id=r.id WHERE r.status='complete' AND r.mode!='daily' GROUP BY r.id HAVING COUNT(h.hole)=CASE WHEN r.mode='full' THEN 18 ELSE 9 END), best AS (SELECT course,mode,user_id,MIN(strokes) AS strokes FROM totals GROUP BY course,mode,user_id), ranked AS (SELECT b.*,p.display_name,ROW_NUMBER() OVER(PARTITION BY b.course,b.mode ORDER BY b.strokes,b.user_id) AS place FROM best b JOIN players p ON p.user_id=b.user_id) SELECT * FROM ranked WHERE place<=5 OR user_id=? ORDER BY strokes,place").bind(user).all();
+   const rows=await db(env).prepare("WITH totals AS (SELECT r.course,r.mode,r.user_id,SUM(h.strokes) AS strokes FROM rounds r JOIN round_holes h ON h.round_id=r.id WHERE r.status='complete' AND r.mode NOT IN ('daily','impossible') GROUP BY r.id HAVING COUNT(h.hole)=CASE WHEN r.mode='full' THEN 18 ELSE 9 END), best AS (SELECT course,mode,user_id,MIN(strokes) AS strokes FROM totals GROUP BY course,mode,user_id), ranked AS (SELECT b.*,p.display_name,ROW_NUMBER() OVER(PARTITION BY b.course,b.mode ORDER BY b.strokes,b.user_id) AS place FROM best b JOIN players p ON p.user_id=b.user_id) SELECT * FROM ranked WHERE place<=5 OR user_id=? ORDER BY strokes,place").bind(user).all();
    const records=[];for(let course=0;course<8;course++)for(const mode of ['front','back','full']){const list=rows.results.filter(r=>r.course===course&&r.mode===mode),seen=new Set(),leaders=[];for(const r of list){if(seen.has(r.user_id))continue;seen.add(r.user_id);leaders.push({name:r.display_name,strokes:r.strokes});if(leaders.length===5)break;}const own=list.find(r=>r.user_id===user);records.push({course,mode,leaders,personal:own?.strokes??null});}return json({records});
   }
   if(path==='/api/daily'&&request.method==='GET'){
@@ -35,7 +48,7 @@ async function handle(request,env,user,account=null){
    return json({daily,reward:reward?.tokens??null});
   }
   if(path==='/api/stats'&&request.method==='GET'){
-   const stats=await db(env).prepare("SELECT COUNT(*) AS scoredHoles,COUNT(h.putts) AS trackedHoles,SUM(h.putts) AS putts,COUNT(h.fairway) AS fairwayAttempts,SUM(h.fairway) AS fairways,COUNT(h.gir) AS greenAttempts,SUM(h.gir) AS greens FROM round_holes h JOIN rounds r ON r.id=h.round_id WHERE r.user_id=? AND r.mode!='daily'").bind(user).first();
+   const stats=await db(env).prepare("SELECT COUNT(*) AS scoredHoles,COUNT(h.putts) AS trackedHoles,SUM(h.putts) AS putts,COUNT(h.fairway) AS fairwayAttempts,SUM(h.fairway) AS fairways,COUNT(h.gir) AS greenAttempts,SUM(h.gir) AS greens FROM round_holes h JOIN rounds r ON r.id=h.round_id WHERE r.user_id=? AND r.mode NOT IN ('daily','impossible')").bind(user).first();
    return json({stats,...await courseProgress(env,user)});
   }
   if(path==='/api/daily'&&request.method==='POST'){
