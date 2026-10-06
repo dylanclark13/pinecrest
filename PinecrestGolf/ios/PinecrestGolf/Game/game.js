@@ -425,7 +425,7 @@ function updateTourUI(){
  const round=Math.floor(holeIndex/18)+1,board=tourStandings(tourField,scores,course.holes,career.displayName||'You'),own=board.find(p=>p.id==='you');
  $('holeCount').textContent=String(holeIndex%18+1).padStart(2,'0')+' / 18';$('mobileHole').textContent='R'+round+' · H'+(holeIndex%18+1);
  $('roundProgress').textContent='TOUR · ROUND '+round+' / 3 · HOLE '+(holeIndex%18+1)+' / 18';
- $('tourStatus').textContent=tourTurn?tourTurn.player.name+(tourTurn.penalty?' · Water penalty +1 · Drop at previous lie':' · Shot '+tourTurn.shot):'Round '+round+'/3 · '+own.place+' · '+scoreText(own.toPar);
+ $('tourStatus').textContent=tourTurn?tourTurn.player.name+(tourTurn.penalty?' · '+tourTurn.reason+' penalty +1 · Drop at previous lie':' · Shot '+tourTurn.shot):'Round '+round+'/3 · '+own.place+' · '+scoreText(own.toPar);
  $('skipTourShot').hidden=!tourTurn;
  if(finished){
   const boundary=holeIndex%18===17;
@@ -443,7 +443,7 @@ function showTourLeaderboard(){
 }
 function queueTourShots(finish=false,after=null){
  if(roundMode!=='tour'||practice||homeOpen)return;
- for(const group of tourGroup){const target=finish?group.player.scores[holeIndex]:Math.min(strokes,group.player.scores[holeIndex]);while(group.strokes<target){group.strokes++;tourQueue.push({player:group.player,shot:group.strokes,...tourShot(hole,group.player,holeIndex,group.strokes),elapsed:0});}}
+ for(const group of tourGroup){const target=finish?group.player.scores[holeIndex]:Math.min(strokes,group.player.scores[holeIndex]);while(group.strokes<target||group.player.shots?.[holeIndex]?.[group.strokes]?.penalty){group.strokes++;tourQueue.push({player:group.player,shot:group.strokes,...tourShot(hole,group.player,holeIndex,group.strokes),elapsed:0});}}
  tourAfterTurns=after;nextTourTurn();
 }
 function nextTourTurn(){
@@ -462,10 +462,10 @@ function playTourTurn(dt){
  }
  const swing=t.putt?.55:.75,flight=t.putt?clamp(t.distance*.20, .65,3.5):2.1,u=clamp((t.elapsed-swing)/flight,0,1),progress=t.putt?1-(1-u)**2:u;
  const x=t.from[0]+(t.to[0]-t.from[0])*progress,z=t.from[1]+(t.to[1]-t.from[1])*progress;
- const club=t.putt?CLUBS[PUTTER_INDEX]:t.distance>150?CLUBS[0]:CLUBS[t.distance>80?5:10],angle=Math.atan2(t.to[0]-t.from[0],-(t.to[1]-t.from[1]));
+ const club=CLUBS[t.clubIndex],angle=Math.atan2(t.to[0]-t.from[0],-(t.to[1]-t.from[1]));
  const b={...makeBall(hole,x,z),y:height(hole,x,z)+.042+(t.putt?0:Math.sin(progress*Math.PI)*Math.min(22,t.distance*.13)),moving:t.elapsed>=swing&&progress<1,airborne:!t.putt&&progress>0&&progress<1,holed:t.holed&&progress===1};
  const back=t.putt?.36:.5;
- const actor={x:t.from[0],z:t.from[1],angle,club,appearance:t.player.appearance,phase:t.elapsed<back?'backswing':t.elapsed<swing?'downswing':'follow',progress:t.elapsed<back?t.elapsed/back:t.elapsed<swing?(t.elapsed-back)/(swing-back):clamp((t.elapsed-swing)/.6,0,1),power:t.putt?clamp(t.distance/30,.08,.5):.8};
+ const actor={x:t.from[0],z:t.from[1],angle,club,appearance:t.player.appearance,phase:t.elapsed<back?'backswing':t.elapsed<swing?'downswing':'follow',progress:t.elapsed<back?t.elapsed/back:t.elapsed<swing?(t.elapsed-back)/(swing-back):clamp((t.elapsed-swing)/.6,0,1),power:t.putt?clamp(t.power,.08,.5):t.power};
  renderer?.render({hole,ball:b,angle,view:t.putt?'putting':'follow',moving:b.moving,actor,trail:[],power:0,greenGrid:false},dt);
  if(t.elapsed>swing+flight+.35)nextTourTurn();
 }
@@ -552,7 +552,7 @@ async function nativeCheckpoint(){
 }
 function restoreNativeCheckpoint(v){
  if(!v||v.roundId!==roundId||v.hole!==holeIndex||!v.ball||!['x','y','z'].every(k=>Number.isFinite(v.ball[k]))||!Number.isInteger(v.strokes)||v.strokes<0||v.strokes>12||!Number.isInteger(v.clubIndex)||v.clubIndex<0||v.clubIndex>=CLUBS.length||!Number.isFinite(v.angle))return;
- for(const g of tourGroup)g.strokes=Math.min(v.strokes,g.player.scores[holeIndex]);
+ for(const g of tourGroup){g.strokes=Math.min(v.strokes,g.player.scores[holeIndex]);if(g.player.shots?.[holeIndex]?.[g.strokes]?.penalty)g.strokes++;}
  puttScaleFeet=PUTT_SCALES.includes(v.puttScaleFeet)?v.puttScaleFeet:0;
  ball={...v.ball,moving:false,holed:false};strokes=v.strokes;clubIndex=v.clubIndex;angle=v.angle;spinBack=clamp(v.spinBack||0,-1,1);spinShape=clamp(v.spinShape||0,-1,1);holeMetrics=v.holeMetrics||holeMetrics;greenGrid=!!v.greenGrid;view=['follow','overhead','putting'].includes(v.view)?v.view:'follow';setAddress();syncSpin();updateSuggestion();drawMap();
 }

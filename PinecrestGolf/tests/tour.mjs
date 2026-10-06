@@ -32,3 +32,16 @@ for(let i=0;i<2;i++){const reward=await request('/api/impossible/reward',{id:att
 assert.equal((await request('/api/profile',undefined,u)).body.round.id,active.id);
 assert.equal((await request('/api/stats',undefined,u)).body.stats.scoredHoles,0);
 console.log('PASS water penalties and dry NPC lies, green-only putts, 1,000-credit reward, retry deduplication, ownership and round/stat isolation.');
+
+let checkedShots=0;
+for(const course of COURSES){const field=createTourField('rules-audit',course.holes,course.level);for(const player of field)for(let index=0;index<54;index++){
+ const h=course.holes[index%18],plan=player.shots[index];assert.equal(plan.length,player.scores[index]);assert.equal(plan.filter(s=>s.holed).length,1);assert(plan.at(-1).holed);let previous=[0,0];
+ for(const s of plan){checkedShots++;assert.deepEqual(s.from,previous);previous=s.to;
+  if(s.penalty){assert(['water','out'].includes(surface(h,...s.from)));assert(!['water','out'].includes(surface(h,...s.to)));continue;}
+  assert(!['water','out'].includes(surface(h,...s.from)));assert(s.distance<=s.capacity+.001);assert(s.power>0&&s.power<=1);assert(Number.isInteger(s.clubIndex));
+  if(surface(h,...s.from)==='sand')assert(['pw','gw','sw','lw'].includes(['driver','3wood','5wood','hybrid','5iron','6iron','7iron','8iron','9iron','pw','gw','sw','lw','putter'][s.clubIndex]));
+  if(s.putt){assert.equal(s.clubIndex,13);for(let i=0;i<=100;i++)assert(['green','fringe'].includes(surface(h,s.from[0]+(s.to[0]-s.from[0])*i/100,s.from[1]+(s.to[1]-s.from[1])*i/100)));}
+ }
+ assert.deepEqual(previous,h.pin);
+}}
+console.log('PASS '+checkedShots+' NPC events across all 8 courses: reachable club distances, valid lies, penalty continuity, green-only putts, hole-outs and exact score totals.');
