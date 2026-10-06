@@ -241,6 +241,9 @@
 
 .hud-layout .fast-forward-shot{min-width:210px;flex-shrink:0;user-select:none;-webkit-user-select:none;touch-action:manipulation}.hud-layout .fast-forward-shot:disabled{opacity:1;cursor:default}
 
+#tourFormat{flex:1;max-width:480px;color:#d3e3ce;font-size:14px;line-height:1.6}.round-options{flex-wrap:wrap}.home-launch:has(#tourFormat:not([hidden])){flex-wrap:wrap;gap:20px}
+.tour-bar{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px 14px;max-width:100%;padding:8px 12px;border:1px solid #dafa9a50;border-radius:8px;background:#122d24;pointer-events:auto;font-size:14px}.tour-bar[hidden]{display:none}.tour-bar button{min-height:44px}.tour-table{overflow:auto;max-height:52dvh}.tour-table table{width:100%;border-collapse:collapse;font-size:14px;white-space:nowrap}.tour-table th,.tour-table td{padding:10px 8px;text-align:right;border-bottom:1px solid #ffffff20}.tour-table th:nth-child(2),.tour-table td:nth-child(2){text-align:left}.tour-table .tour-you{background:#dafa9a1c;color:#dafa9a;font-weight:700}#tourDialog{width:min(740px,calc(100vw - 28px))}#tourDialog h2{font-size:28px}#resultTourLeaderboard{width:100%;min-height:44px;margin-top:12px}#game.npc-playing .shot-panel,#game.npc-playing .aim-tip{display:none}#game.npc-playing #fastForwardShot{display:none}@media(max-width:760px){.tour-bar{width:100%;padding:4px 8px;gap:4px 8px}.tour-bar>span{flex:1;min-width:120px;font-size:13px}.tour-table th,.tour-table td{padding:9px 6px}}
+
 #game{height:100dvh;min-height:0}button,input{touch-action:manipulation}
 
 #accountButton,#saveProgressBanner,#onboardingAccountPrompt,#createAccountCTA,#signInCTA{display:none!important}

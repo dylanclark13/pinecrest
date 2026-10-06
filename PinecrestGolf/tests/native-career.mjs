@@ -20,3 +20,10 @@ const record=await request('/api/records');assert.equal(record.records.find(r=>r
 // A fresh module instance must restore from the native file, not the JS heap.
 await import('../ios/PinecrestGolf/Game/native.js?relaunch');assert.equal((await request('/api/profile')).profile.tokens,after);
 assert.ok(writes>20);console.log('PASS offline career, unlocked challenge courses and medals, checkpoint, duplicate scores, daily rewards, stats, upgrade failure rollback, and relaunch from native storage.');
+const event=await request('/api/rounds',{course:7,mode:'tour'});assert.equal(event.status,200);assert.equal(event.round.end_hole,53);const eventID=event.round.id;
+for(let h=0;h<54;h++){
+ const result=await request('/api/rounds/'+eventID+'/holes',{hole:h,strokes:4});assert.equal(result.status,200);
+ if(h===17){await import('../ios/PinecrestGolf/Game/native.js?tour-resume');const restored=await request('/api/profile');assert.equal(restored.round.id,eventID);assert.equal(restored.round.next_hole,18);assert.equal(restored.round.scores.length,18);}
+}
+assert.equal((await request('/api/profile')).round,null);const tourTokens=(await request('/api/profile')).profile.tokens;await request('/api/rounds/'+eventID+'/holes',{hole:53,strokes:4});assert.equal((await request('/api/profile')).profile.tokens,tourTokens);
+console.log('PASS offline 54-hole tour, round-two relaunch and duplicate final-score safety.');

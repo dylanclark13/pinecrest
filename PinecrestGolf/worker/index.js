@@ -51,19 +51,19 @@ async function handle(request,env,user,account=null){
    return json({profile:p,spent:cost,clubId:body.clubId});
   }
   if(path==='/api/rounds'&&request.method==='POST'){
-   const b=await request.json();if(!Number.isInteger(b.course)||b.course<0||b.course>7||!['front','back','full'].includes(b.mode))return json({error:'Choose a course and round length.'},400);
-   const id=crypto.randomUUID(),start=b.mode==='back'?9:0,end=b.mode==='front'?8:17;await ensurePlayer(env,user);
+   const b=await request.json();if(!Number.isInteger(b.course)||b.course<0||b.course>7||!['front','back','full','tour'].includes(b.mode))return json({error:'Choose a course and round length.'},400);
+   const id=crypto.randomUUID(),start=b.mode==='back'?9:0,end=b.mode==='tour'?53:b.mode==='front'?8:17;await ensurePlayer(env,user);
    await db(env).batch([db(env).prepare("UPDATE rounds SET status='closed' WHERE user_id=? AND status='active'").bind(user),db(env).prepare('INSERT INTO rounds(id,user_id,course,mode,next_hole,end_hole,status,created_at) VALUES(?,?,?,?,?,?,?,?)').bind(id,user,b.course,b.mode,start,end,'active',Date.now())]);return json({round:await currentRound(env,user),profile:await profile(env,user)});
   }
   const match=path.match(/^\/api\/rounds\/([a-f0-9-]{36})\/holes$/);
   if(match&&request.method==='POST'){
-   const b=await request.json(),id=match[1];if(!Number.isInteger(b.hole)||b.hole<0||b.hole>17||!Number.isInteger(b.strokes)||b.strokes<1||b.strokes>13)return json({error:'Invalid hole score.'},400);
-   const round=await db(env).prepare('SELECT * FROM rounds WHERE id=? AND user_id=?').bind(id,user).first();if(!round)return json({error:'Round not found.'},404);
+   const b=await request.json(),id=match[1];if(!Number.isInteger(b.hole)||b.hole<0||b.hole>53||!Number.isInteger(b.strokes)||b.strokes<1||b.strokes>13)return json({error:'Invalid hole score.'},400);
+   const round=await db(env).prepare('SELECT * FROM rounds WHERE id=? AND user_id=?').bind(id,user).first();if(!round)return json({error:'Round not found.'},404);if(b.hole>round.end_hole)return json({error:'Invalid hole for this round.'},400);
    const existing=await db(env).prepare('SELECT strokes,tokens FROM round_holes WHERE round_id=? AND hole=?').bind(id,b.hole).first();if(existing)return json({profile:await profile(env,user),earned:existing.tokens,duplicate:true,round:await currentRound(env,user)});
    if(round.status!=='active'||b.hole!==round.next_hole)return json({error:'Finish the current hole before moving on.'},409);
    const metrics=b.metrics;
    if(metrics&&(!Number.isInteger(metrics.putts)||metrics.putts<0||metrics.putts>b.strokes||![null,0,1].includes(metrics.fairway)||![0,1].includes(metrics.gir)))return json({error:'Invalid hole statistics.'},400);
-   const receipt=crypto.randomUUID(),done=b.hole===round.end_hole,isDaily=round.mode==='daily',bonus=done&&!isDaily?(round.mode==='full'?20:8):0,earned=isDaily?0:holeReward(b.strokes,PARS[b.hole],round.course+1)+bonus;
+   const receipt=crypto.randomUUID(),done=b.hole===round.end_hole,isDaily=round.mode==='daily',bonus=done&&!isDaily?(round.mode==='tour'?60:round.mode==='full'?20:8):0,earned=isDaily?0:holeReward(b.strokes,PARS[b.hole%18],round.course+1)+bonus;
    let dailyTokens=0;
    if(isDaily&&done){const prev=await db(env).prepare('SELECT SUM(strokes) AS total FROM round_holes WHERE round_id=?').bind(id).first();const par=PARS.slice(round.end_hole-2,round.end_hole+1).reduce((a,b)=>a+b,0),total=(prev.total||0)+b.strokes;dailyTokens=total<=par?50:total<=par+3?40:35;}
    const dailyStatements=isDaily&&done?[

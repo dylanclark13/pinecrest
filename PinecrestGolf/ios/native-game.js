@@ -8,6 +8,7 @@ async function nativeCheckpoint(){
 }
 function restoreNativeCheckpoint(v){
  if(!v||v.roundId!==roundId||v.hole!==holeIndex||!v.ball||!['x','y','z'].every(k=>Number.isFinite(v.ball[k]))||!Number.isInteger(v.strokes)||v.strokes<0||v.strokes>12||!Number.isInteger(v.clubIndex)||v.clubIndex<0||v.clubIndex>=CLUBS.length||!Number.isFinite(v.angle))return;
+ for(const g of tourGroup)g.strokes=Math.min(v.strokes,g.player.scores[holeIndex]);
  ball={...v.ball,moving:false,holed:false};strokes=v.strokes;clubIndex=v.clubIndex;angle=v.angle;spinBack=clamp(v.spinBack||0,-1,1);spinShape=clamp(v.spinShape||0,-1,1);holeMetrics=v.holeMetrics||holeMetrics;greenGrid=!!v.greenGrid;view=['follow','overhead','putting'].includes(v.view)?v.view:'follow';setAddress();syncSpin();updateSuggestion();drawMap();
 }
 async function nativeStatus(){

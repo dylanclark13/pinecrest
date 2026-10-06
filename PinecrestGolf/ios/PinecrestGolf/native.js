@@ -34,16 +34,16 @@ async function handle(path,options){try{
  else if(path==='/api/upgrade'){const level=b.expectedLevel;if(!CLUB_IDS.includes(b.clubId)||!Number.isInteger(level)||level<0||level>=4)throw Error('Choose a valid upgrade.');const cost=UPGRADE_COSTS[level];if((s.profile.clubLevels[b.clubId]||0)!==level||s.profile.tokens<cost)throw Error('Not enough tokens, or club level changed.');s.profile.tokens-=cost;s.profile.clubLevels[b.clubId]=level+1;extra={spent:cost};}
  else if(path==='/api/rounds'||path==='/api/daily'){
  const daily=path==='/api/daily'?dailyChallenge():null,c=daily?daily.course:b.course,mode=daily?'daily':b.mode;
- if(!Number.isInteger(c)||!progress(s).unlockedCourses.includes(c)||!['front','back','full','daily'].includes(mode))throw Error('Choose an available course and round.');
+ if(!Number.isInteger(c)||!progress(s).unlockedCourses.includes(c)||!['front','back','full','daily','tour'].includes(mode))throw Error('Choose an available course and round.');
  if(s.round){s.history.push({...s.round,status:'closed'});}s.checkpoint=null;
- s.round={id:nativeID(),course:c,mode,daily,next_hole:daily?daily.start:mode==='back'?9:0,end_hole:daily?daily.end:mode==='front'?8:17,status:'active',scores:[],rewards:{}};
+ s.round={id:nativeID(),course:c,mode,daily,next_hole:daily?daily.start:mode==='back'?9:0,end_hole:daily?daily.end:mode==='tour'?53:mode==='front'?8:17,status:'active',scores:[],rewards:{}};
  }else if(/^\/api\/rounds\/[^/]+\/holes$/.test(path)){
  const r=s.round;if(!r||path.split('/')[3]!==r.id){const previous=s.history.find(r=>r.id===path.split('/')[3]);if(previous?.rewards[b.hole]!==undefined)return json({profile:profile(s),round:round(s),earned:previous.rewards[b.hole],duplicate:true});throw Error('Round not found.');}
- if(!Number.isInteger(b.hole)||b.hole<0||b.hole>17||!Number.isInteger(b.strokes)||b.strokes<1||b.strokes>13)throw Error('Invalid score.');
+ if(!Number.isInteger(b.hole)||b.hole<0||b.hole>r.end_hole||!Number.isInteger(b.strokes)||b.strokes<1||b.strokes>13)throw Error('Invalid score.');
  if(r.rewards[b.hole]!==undefined)return json({profile:profile(s),round:round(s),earned:r.rewards[b.hole],duplicate:true});
  if(r.status!=='active'||r.next_hole!==b.hole)throw Error('Finish the current hole first.');
  const m=b.metrics;if(m&&(!Number.isInteger(m.putts)||m.putts<0||m.putts>b.strokes||![null,0,1].includes(m.fairway)||![0,1].includes(m.gir)))throw Error('Invalid statistics.');
- const done=b.hole===r.end_hole,isDaily=r.mode==='daily',roundBonus=done&&!isDaily?(r.mode==='full'?20:8):0;let earned=isDaily?0:holeReward(b.strokes,pars[b.hole],r.course+1)+roundBonus,dailyReward=0;
+ const done=b.hole===r.end_hole,isDaily=r.mode==='daily',roundBonus=done&&!isDaily?(r.mode==='tour'?60:r.mode==='full'?20:8):0;let earned=isDaily?0:holeReward(b.strokes,pars[b.hole%18],r.course+1)+roundBonus,dailyReward=0;
  r.scores.push({hole:b.hole,strokes:b.strokes,metrics:m});
  if(isDaily&&done&&s.dailyRewards[r.daily.day]===undefined){const total=r.scores.reduce((a,h)=>a+h.strokes,0),par=pars.slice(r.daily.start,r.daily.end+1).reduce((a,b)=>a+b,0);dailyReward=total<=par?50:total<=par+3?40:35;s.dailyRewards[r.daily.day]=dailyReward;earned+=dailyReward;}
  s.profile.tokens+=earned;if(!isDaily){s.profile.holes++;if(done)s.profile.rounds++;}r.rewards[b.hole]=earned;r.next_hole++;s.checkpoint=null;if(done){r.status='complete';s.history.push(r);s.round=null;}extra={earned,roundBonus,dailyReward};

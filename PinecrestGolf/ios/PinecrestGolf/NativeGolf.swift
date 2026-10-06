@@ -251,7 +251,7 @@ struct NativeClubhouse: View {
         Section("\(s.name) · \(s.tokens) tokens") {
             Text("All eight courses and practice areas work without internet. This career saves on this device.")
             if s.resume { Button("Resume saved round") { game.send("resume") } }
-            Picker("Round", selection: $roundMode) { Text("18 holes").tag("full"); Text("Front nine").tag("front"); Text("Back nine").tag("back") }
+            Picker("Round", selection: $roundMode) { Text("18 holes").tag("full"); Text("Front nine").tag("front"); Text("Back nine").tag("back"); Text("Go on tour · 3 rounds").tag("tour") }
         }
         Section("Practice · No effect on records") {
             Button("Driving range") { game.send("range") }

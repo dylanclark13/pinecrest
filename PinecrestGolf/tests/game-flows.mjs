@@ -1,3 +1,4 @@
+import * as tour from '../web/tour.js';
 import {createGolfMusic} from '../web/music.js';
 import {GreenskeeperGame,KEEPER_TOOLS} from '../web/greenskeeper.js';
 import assert from 'node:assert/strict';
@@ -16,7 +17,7 @@ const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Elem
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
 class Renderer{constructor(){this.eye=[2,3,6];this.center=[0,0,0];this.trees=[]}loadHole(h){this.h=h}render(state){assert(state.hole);assert(Number.isFinite(state.ball.x));renderCalls++}pointOnCourse(){return null}}
-const context=vm.createContext({createGolfMusic,GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
+const context=vm.createContext({...tour,createGolfMusic,GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
 const source=fs.readFileSync(new URL('../web/game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');vm.runInContext(source,context);
 await new Promise(r=>setImmediate(r));const run=s=>vm.runInContext(s,context);
 run("for(const el of document.querySelectorAll('dialog[open]'))el.close()");for(const e of elements.values())e.close();
@@ -80,3 +81,23 @@ run("ball.moving=false;phase='accuracy';timingNeedle=.5;commitStrike()");assert.
 run("$('helpDialog').showModal()");forward.click();assert.equal(run('fastForward'),false);elements.get('helpDialog').close();
 run("phase='ready';ball.moving=false;updateUI()");forward.click();assert.equal(run('fastForward'),false);assert.equal(forward.hidden,true);
 console.log('PASS early pointer press, duplicate-click safety, impact persistence, rolling/keyboard activation and per-shot reset.');
+// A tour uses the same course for three rounds; NPC views never modify the player's shot.
+for(const e of elements.values())e.close();run("showCourses();pendingCourse=1;pendingRound='tour'");await run('startSelectedRound()');
+assert.equal(run('HOLES.length'),54);assert.equal(run('HOLES[0]===HOLES[18]&&HOLES[18]===HOLES[36]'),true);assert.equal(run('tourGroup.length'),2);
+run('strokes=1;queueTourShots(false)');assert.equal(run('ready()'),false);assert.equal(elements.get('skipTourShot').hidden,false);
+const personalShot=run('JSON.stringify({ball,strokes,scores,roundId,clubIndex})');for(let i=0;i<10;i++)run('playTourTurn(.05)');assert.equal(run('JSON.stringify({ball,strokes,scores,roundId,clubIndex})'),personalShot);
+elements.get('skipTourShot').click();assert.equal(run('tourTurn'),null);assert.equal(run('ready()'),true);
+run('showTourLeaderboard()');assert(elements.get('tourTable').innerHTML.includes('(you)'));assert(elements.get('tourTable').innerHTML.includes('Alex Mercer'));elements.get('tourDialog').close();
+run('showCourses()');const savedField=run('JSON.stringify(tourField)'),savedGroup=run('JSON.stringify(tourGroup)');run("startPractice('range');showCourses()");assert.equal(run('JSON.stringify(tourField)'),savedField);assert.equal(run('JSON.stringify(tourGroup)'),savedGroup);
+run("scores=HOLES.map((h,i)=>i<18?h.par:null);startHole(18)");assert.equal(run('holeIndex'),18);assert.equal(elements.get('mobileHole').textContent,'R2 · H1');assert.equal(run('tourGroup.length'),2);
+run('scores=HOLES.map(h=>h.par);holeIndex=53;hole=HOLES[53];finished=true;updateUI()');assert(elements.get('resultCopy').textContent.includes('216 strokes'));assert.equal(elements.get('resultEyebrow').textContent,'TOURNAMENT COMPLETE');
+console.log('PASS tour course repetition, NPC turn/skip controls, player-state isolation, leaderboard, practice restoration and final result UI.');
+run("showCourses();pendingCourse=0;pendingRound='tour'");await run('startSelectedRound()');
+for(let i=0;i<54;i++){
+ assert.equal(run('holeIndex'),i);run('strokes=hole.par;finishHole();skipTourShots()');
+ await new Promise(r=>setImmediate(r));assert.equal(run('pendingScore'),null);assert.equal(run('savePending'),false);
+ assert.equal(run('scores.filter(x=>x!==null).length'),i+1);
+ if(i<53){assert.equal(run('savedRound.next_hole'),i+1);elements.get('nextHole').click();}
+}
+assert.equal(run('savedRound'),null);run('showTourLeaderboard()');assert(elements.get('tourSummary').textContent.includes('Final results'));elements.get('tourDialog').close();elements.get('nextHole').click();assert.equal(run('homeOpen'),true);
+console.log('PASS all 54 holes through real finish/save/next controls and final leaderboard handoff.');
