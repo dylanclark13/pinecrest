@@ -1,3 +1,4 @@
+import {impossibleHole} from '../web/impossible.js';
 import * as tour from '../web/tour.js';
 import {createGolfMusic} from '../web/music.js';
 import {GreenskeeperGame,KEEPER_TOOLS} from '../web/greenskeeper.js';
@@ -17,7 +18,7 @@ const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Elem
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
 class Renderer{constructor(){this.eye=[2,3,6];this.center=[0,0,0];this.trees=[]}loadHole(h){this.h=h}render(state){assert(state.hole);assert(Number.isFinite(state.ball.x));renderCalls++}pointOnCourse(){return null}}
-const context=vm.createContext({...tour,createGolfMusic,GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
+const context=vm.createContext({impossibleHole,...tour,createGolfMusic,GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:async(path,options)=>{const r=await request(path,options?.body?JSON.parse(options.body):undefined,'ui');return {ok:r.status===200,json:async()=>r.body}}});
 const source=fs.readFileSync(new URL('../web/game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');vm.runInContext(source,context);
 await new Promise(r=>setImmediate(r));const run=s=>vm.runInContext(s,context);
 run("for(const el of document.querySelectorAll('dialog[open]'))el.close()");for(const e of elements.values())e.close();
@@ -101,3 +102,14 @@ for(let i=0;i<54;i++){
 }
 assert.equal(run('savedRound'),null);run('showTourLeaderboard()');assert(elements.get('tourSummary').textContent.includes('Final results'));elements.get('tourDialog').close();elements.get('nextHole').click();assert.equal(run('homeOpen'),true);
 console.log('PASS all 54 holes through real finish/save/next controls and final leaderboard handoff.');
+for(const e of elements.values())e.close();run("showCourses();pendingCourse=2;pendingRound='tour'");await run('startSelectedRound()');
+run('strokes=2;ball.x=4;ball.z=-25;showCourses()');const beforeChallenge=run('JSON.stringify({roundId,roundMode,ball,strokes,scores,tourField,tourGroup})'),beforeChallengeCareer=run('JSON.stringify(career)');
+elements.get('impossibleTab').click();assert.equal(elements.get('homeImpossible').hidden,false);elements.get('startImpossible').click();assert.equal(run('practice'),'impossible');assert.equal(run('HOLES.length'),1);assert.equal(run('hole.name'),'The Gauntlet');assert.equal(elements.get('suggestion').hidden,true);assert.equal(elements.get('impossibleBar').hidden,false);
+run('beginCharge()');assert.equal(run('phase'),'power');assert.equal(elements.get('swingButton').disabled,false);run('releasePower()');assert.equal(run('phase'),'accuracy');assert.equal(elements.get('swingButton').disabled,false);run('cancelSetup()');
+run('strokes=19;ball.moving=false;restAfterShot(true)');assert.equal(run('finished'),false);run('strokes=20;restAfterShot(true)');assert.equal(run('finished'),true);assert(elements.get('impossibleDialog').open);assert.equal(run('impossibleBest'),null);
+elements.get('impossibleAgain').click();assert.equal(run('strokes'),0);assert.equal(run('finished'),false);assert.equal(run('impossibleAttempts'),2);
+run('strokes=7;ball.holed=true;finishHole()');assert.equal(run('impossibleBest'),7);assert.equal(run('impossibleClears'),1);assert.equal(run('pendingScore'),null);assert.equal(run('JSON.stringify(career)'),beforeChallengeCareer);
+elements.get('impossibleDone').click();assert.equal(run('JSON.stringify({roundId,roundMode,ball,strokes,scores,tourField,tourGroup})'),beforeChallenge);assert.equal(elements.get('homeImpossible').hidden,false);
+// Entering from a paused in-flight round still initializes a fresh challenge ball.
+run("ball.moving=true;phase='flight';startImpossible()");assert.equal(run('ball.moving'),false);assert.equal(run('phase'),'ready');run('exitImpossible()');assert.equal(run('ball.moving'),true);
+console.log('PASS Impossible Hole entry, swing input, 20-stroke failure, retry, success and active-tour/career isolation.');

@@ -257,6 +257,10 @@ struct NativeClubhouse: View {
             Button("Driving range") { game.send("range") }
             Button("Putting green") { game.send("putting") }
         }
+        Section("Impossible Hole") {
+            Text("The Gauntlet · One extreme par 5. Tiny island green, strong wind and three forced carries. Your active round stays saved.")
+            Button("Attempt The Gauntlet") { game.send("impossible") }
+        }
         Section("Clubhouse arcade") { Button("Greenskeeper chaos") { game.send("greenskeeper") } }
         Section("Courses") {
             ForEach(s.courses) { c in

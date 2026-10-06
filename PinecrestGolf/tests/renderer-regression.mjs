@@ -40,3 +40,4 @@ assert.notEqual(keeperReaction({tool:'hand',elapsed:.8,variant:0}).look,keeperRe
 for(const tool of KEEPER_TOOLS)for(const elapsed of [.4,.9,1.4,1.7])for(const variant of [0,1])renderer.render({view:'greenskeeper',keeper:{tool:tool.id,elapsed,variant,quality:'perfect',closeView:true,reduced:false}},1/60);
 for(const tool of KEEPER_TOOLS){const r=keeperReaction({tool:tool.id,elapsed:.8,reduced:true});assert(Object.values(r).every(v=>v===0));}
 console.log('PASS full spin, rolling chair, flying cap, mirrored double-takes and reduced-motion suppression');
+const {impossibleHole}=await import('../web/impossible.js');const gauntlet=impossibleHole();renderer.loadHole(gauntlet);renderer.render({...state,hole:gauntlet,ball:makeBall(gauntlet),view:'follow'},1/60);renderer.render({...state,hole:gauntlet,ball:makeBall(gauntlet,...gauntlet.pin),view:'putting',greenGrid:true},1/60);console.log('PASS Gauntlet terrain, tiny island green and slope geometry.');

@@ -1,4 +1,5 @@
 import './native.js';
+import {impossibleHole} from './impossible.js';
 import {createTourField,tourStandings,tourPartners,tourShot} from './tour.js';
 import {createGolfMusic} from './music.js';
 import {GreenskeeperGame,KEEPER_TOOLS} from './greenskeeper.js';
@@ -13,6 +14,7 @@ let renderer;try{renderer=new GolfRenderer(canvas);}catch(error){$('loadError').
 let courseIndex=1,course=COURSES[1],HOLES=course.holes,roundMode='full',roundStart=0,roundEnd=17,pendingCourse=1,pendingRound='full';
 let holeIndex=0,hole=HOLES[0],ball=makeBall(hole),clubIndex=0,angle=0,view='follow',strokes=0,scores=Array(HOLES.length).fill(null);
 let fastForward=false;
+let impossibleAttempts=0,impossibleClears=0,impossibleBest=null;
 let tourField=[],tourGroup=[],tourQueue=[],tourTurn=null,tourAfterTurns=null;
 let phase='ready',power=0,suggested=1,chargeTime=0,timingTime=0,timingNeedle=-1,accuracy=0,downswingTime=0,followTime=0,actor=null;
 let trail=[],lastLie={x:0,z:0},shotStart={x:0,z:0},shotDistance=0,shotCarry=0,shotInFlight=false,finished=false,greenGrid=false;
@@ -34,7 +36,7 @@ function setAddress(){actor={x:ball.x,z:ball.z,angle,club:activeClub(),appearanc
 function updateSuggestion(){
   if(phase!=='ready')return;const c=activeClub(),d=Math.hypot(aimTarget[0]-ball.x,aimTarget[1]-ball.z)*YD,lie=surface(hole,ball.x,ball.z),roll=c.type==='wood'?1.1:c.type==='putter'?1:1.045;
   suggested=clamp(d/(c.range*lieFactor(lie,c,hole)*roll),.008,1);suggested=Math.round(suggested*20)/20;
-  const showGuide=Boolean(practice)||courseIndex<3;$('suggestion').hidden=!showGuide;$('powerTarget').hidden=!showGuide;
+  const showGuide=practice!=='impossible'&&(Boolean(practice)||courseIndex<3);$('suggestion').hidden=!showGuide;$('powerTarget').hidden=!showGuide;
   $('powerTarget').style.left=clamp(suggested*100-2,0,96)+'%';$('powerTarget').style.width='4%';
   $('suggestion').textContent=clubIndex===PUTTER_INDEX?'Flat-ground guide '+Math.round(suggested*100)+'%':'Range guide '+Math.round(suggested*100)+'% · wind excluded';setAddress();updateUI();
 }
@@ -74,6 +76,7 @@ function updateUI(){
   $('puttingCamera').disabled=ball.moving||Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])>35;$('puttingCamera').setAttribute('aria-pressed',String(view==='putting'));
   $('practiceReset').disabled=ball.moving||['power','accuracy','downswing'].includes(phase);$('practiceDistance').disabled=$('practiceReset').disabled;
   if(practice){$('roundProgress').textContent='PRACTICE · No scores saved';$('courseTitle').textContent=practice==='range'?'DRIVING RANGE':'PUTTING GREEN';$('holeName').textContent=practice==='range'?'Practice target':'Practice cup';$('statusLine').textContent=ball.moving?'PRACTICE SHOT IN PLAY':'PRACTICE · RESET BALL TO TRY AGAIN';}
+  updateImpossibleUI();
   updateTourUI();
   if(roundMode==='daily'&&!practice)$('roundProgress').textContent='DAILY THREE · '+dailyConfig.day+' · Hole '+(holeIndex-roundStart+1)+' of 3';
 }
@@ -152,7 +155,7 @@ async function loadCareer(){
  try{const data=await api('/api/profile');career=data.profile;savedRound=data.round;account=data.account||null;appearanceDraft={...DEFAULT_LOOK,...career.appearance};guestCareer=Boolean(data.guest);profileLoaded=true;$('saveDetails').textContent=guestCareer?'Device career saves locally. Online accounts are separate.':'Progress and rounds save after every hole.';homeMessage(guestCareer?'Guest career saved for this browser.':'Career saved on this device.');}catch(error){homeMessage(error.message,true);$('homeRetry').hidden=false;}
  finally{profileBusy=false;renderHome();renderCharacter();renderAccount();if(profileLoaded&&!career.onboarded&&!onboardingSeen&&!isModal()){onboardingSeen=true;showOnboarding();}}
 }
-function setHomeTab(tab){homeTab=tab;$('homeScreen').classList.toggle('character-view',tab==='character');for(const [id,name]of[['homePlay','play'],['homeEquipment','equipment'],['homeCharacter','character'],['homeRecords','records'],['homeStats','stats'],['homeGreenskeeper','greenskeeper']])$(id).hidden=tab!==name;for(const [id,name]of[['playTab','play'],['equipmentTab','equipment'],['characterTab','character'],['recordsTab','records'],['statsTab','stats'],['greenskeeperTab','greenskeeper']]){$(id).classList.toggle('selected',tab===name);$(id).setAttribute('aria-pressed',String(tab===name));}renderEquipment();if(tab==='character'){appearanceDraft={...DEFAULT_LOOK,...career.appearance};renderCharacter();}if(tab==='records')loadRecords();if(tab==='stats')loadStats();}
+function setHomeTab(tab){homeTab=tab;$('homeScreen').classList.toggle('character-view',tab==='character');for(const [id,name]of[['homePlay','play'],['homeEquipment','equipment'],['homeCharacter','character'],['homeRecords','records'],['homeStats','stats'],['homeGreenskeeper','greenskeeper'],['homeImpossible','impossible']])$(id).hidden=tab!==name;for(const [id,name]of[['playTab','play'],['equipmentTab','equipment'],['characterTab','character'],['recordsTab','records'],['statsTab','stats'],['greenskeeperTab','greenskeeper'],['impossibleTab','impossible']]){$(id).classList.toggle('selected',tab===name);$(id).setAttribute('aria-pressed',String(tab===name));}renderEquipment();if(tab==='character'){appearanceDraft={...DEFAULT_LOOK,...career.appearance};renderCharacter();}if(tab==='records')loadRecords();if(tab==='stats')loadStats();}
 function showCourses(){
  if(savePending||pendingScore){toast('Save this hole before returning to the clubhouse.');return;}if(replay)stopReplay();cancelSetup();if(practice)leavePractice();pendingCourse=courseIndex;pendingRound=roundMode;skipTourShots(false);for(const d of document.querySelectorAll('dialog[open]'))d.close();homeOpen=true;$('homeScreen').hidden=false;$('game').classList.add('at-home');renderer?.loadHole(COURSES[pendingCourse].holes[0]);setHomeTab('play');renderHome();
 }
@@ -266,11 +269,13 @@ function startPractice(kind){
  $('practiceControls').hidden=false;$('game').classList.add('practicing');$('practiceLabel').textContent=kind==='range'?'Driving range':'Putting green';$('practiceDistance').innerHTML=(kind==='range'?[50,100,150,200,250]:[5,10,20,30]).map(n=>'<option value="'+n+'">'+n+(kind==='range'?' yd':' ft')+'</option>').join('');$('practiceDistance').value=kind==='range'?'150':'10';closeHome();resetPractice();
 }
 function resetPractice(){
+ if(practice==='impossible'){resetImpossible();return;}
  if(!practice)return;const d=Number($('practiceDistance').value)/(practice==='range'?YD:YD*3),h={...structuredClone(COURSES[0].holes[0]),id:'practice',practice:practice,name:'Practice',pin:[0,practice==='range'?-d:-80],path:[[0,0],[0,-d]],centerline:[[0,0],[0,-d]],water:[],sand:[],wind:[0,0],gust:0,elevation:0,width:40,greenRadius:practice==='range'?9:18,slope:practice==='range'?[0,0]:[.014,.01],contour:practice==='range'?0:.045};
  HOLES=[h];scores=[null];startHole(0);if(practice==='putting'){ball=makeBall(h,0,h.pin[1]+d);clubIndex=PUTTER_INDEX;angle=0;aimTarget=[...h.pin];greenGrid=true;view='putting';updateSuggestion();}else{view='follow';clubIndex=recommendedClub(h,ball);updateSuggestion();}
  $('practiceFeedback').textContent='No scores saved. Reset the ball to repeat this shot.';drawMap();
 }
 function practiceRest(holed){
+ if(practice==='impossible'){impossibleRest(holed);return;}
  phase='ready';finished=false;power=0;ball.moving=false;trail=[];aimTarget=[...hole.pin];angle=Math.atan2(hole.pin[0]-ball.x,-(hole.pin[1]-ball.z));
  $('practiceFeedback').textContent=holed?'Holed! Reset the ball for another attempt.':Math.round(shotCarry*YD)+' yd carry · '+Math.round(shotDistance*YD)+' yd total · '+(Math.hypot(ball.x-hole.pin[0],ball.z-hole.pin[1])*YD*(practice==='putting'?3:1)).toFixed(1)+(practice==='putting'?' ft':' yd')+' from target.';
  updateSuggestion();$('swingButton').disabled=holed;drawMap();
@@ -278,6 +283,45 @@ function practiceRest(holed){
 function leavePractice(){
  const v=practiceSnapshot;if(!v)return;({courseIndex,course,HOLES,roundMode,roundStart,roundEnd,holeIndex,hole,ball,clubIndex,angle,view,strokes,scores,phase,power,actor,trail,lastLie,shotStart,shotDistance,shotCarry,shotInFlight,finished,greenGrid,aimTarget,hasRound,roundId,dailyConfig,holeMetrics,lastReplay,tourField,tourGroup}=v);practice=null;practiceSnapshot=null;recording=null;$('lengthValue').textContent=Math.round(hole.path.reduce((s,p,i)=>i?s+Math.hypot(p[0]-hole.path[i-1][0],p[1]-hole.path[i-1][1]):0,0)*YD);$('practiceControls').hidden=true;$('game').classList.remove('practicing');$('replayShot').hidden=$('replayHole').hidden=!lastReplay;
 }
+function renderImpossibleSession(){
+ $('impossibleSession').textContent=impossibleAttempts?impossibleAttempts+' attempts · '+impossibleClears+' completed · Session best: '+(impossibleBest===null?'not finished':impossibleBest+' strokes'):'No attempts this session.';
+}
+function startImpossible(){
+ if(savePending||pendingScore)return;if(replay)stopReplay();if(practice)leavePractice();skipTourShots(false);cancelSetup();
+ practiceSnapshot=practiceState();practice='impossible';hasRound=false;roundId=null;roundMode='impossible';roundStart=roundEnd=0;dailyConfig=null;
+ courseIndex=7;course={...COURSES[7],name:'The Gauntlet',difficulty:'Virtually impossible',level:10};
+ for(const d of document.querySelectorAll('dialog[open]'))d.close();$('practiceControls').hidden=true;closeHome();resetImpossible(true);
+ toast('The Gauntlet · Range Guide off · 20-stroke limit · Every water penalty counts.',6000);
+}
+function resetImpossible(initial=false){
+ if(practice!=='impossible'||(initial!==true&&(ball.moving||['power','accuracy','downswing'].includes(phase))))return;
+ if(replay)stopReplay();$('impossibleDialog').close();impossibleAttempts++;HOLES=[impossibleHole()];scores=[null];view='follow';startHole(0);renderImpossibleSession();
+}
+function updateImpossibleUI(){
+ const active=practice==='impossible';$('impossibleBar').hidden=!active||homeOpen;if(!active)return;
+ const busy=ball.moving||['power','accuracy','downswing'].includes(phase)||!!replay;
+ $('retryImpossible').disabled=busy;$('exitImpossible').disabled=busy;$('swingButton').disabled=ball.moving||['downswing','complete'].includes(phase)||!!replay||finished;
+ $('courseTitle').textContent='THE GAUNTLET · EXTREME';$('roundProgress').textContent='STANDALONE CHALLENGE · PAR 5';$('holeName').textContent='The Gauntlet';$('mobileHole').textContent='Gauntlet · Par 5';
+ $('impossibleStatus').textContent='Attempt '+impossibleAttempts+' · '+strokes+'/20 strokes'+(impossibleBest===null?'':' · Best '+impossibleBest);
+ $('statusLine').textContent=finished?'ATTEMPT FINISHED · RETRY OR LEAVE':ball.moving?'THE GAUNTLET · BALL IN PLAY':'NO RANGE GUIDE · EVERY PENALTY COUNTS';
+}
+function impossibleRest(holed){
+ phase='ready';power=0;ball.moving=false;trail=[];aimTarget=[...hole.pin];angle=Math.atan2(hole.pin[0]-ball.x,-(hole.pin[1]-ball.z));clubIndex=recommendedClub(hole,ball);
+ greenGrid=['green','fringe'].includes(surface(hole,ball.x,ball.z));
+ if(holed||strokes>=20){
+  finished=true;phase='complete';if(holed){impossibleClears++;impossibleBest=Math.min(impossibleBest??Infinity,strokes);}
+  $('impossibleResultTitle').textContent=holed?'You beat The Gauntlet.':'The Gauntlet wins.';
+  $('impossibleResultCopy').textContent=holed?'Holed in '+strokes+' strokes ('+scoreText(strokes-5)+'). Session best: '+impossibleBest+'.':'20 strokes reached, including penalties. Try a different landing spot, club or spin setting.';
+  renderImpossibleSession();$('impossibleDialog').showModal();
+ }
+ updateSuggestion();drawMap();
+}
+function exitImpossible(){
+ if(practice!=='impossible'||ball.moving||['power','accuracy','downswing'].includes(phase))return;
+ $('impossibleDialog').close();showCourses();setHomeTab('impossible');renderImpossibleSession();
+}
+$('impossibleTab').onclick=()=>{setHomeTab('impossible');renderImpossibleSession();};
+$('startImpossible').onclick=startImpossible;$('retryImpossible').onclick=$('impossibleAgain').onclick=resetImpossible;$('exitImpossible').onclick=$('impossibleDone').onclick=exitImpossible;
 $('practiceRange').onclick=()=>startPractice('range');$('practicePutting').onclick=()=>startPractice('putting');$('practiceReset').onclick=resetPractice;$('practiceDistance').onchange=resetPractice;
 $('puttingCamera').onclick=()=>{if(ball.moving)return;$('mobileDetailsDialog').close();cancelSetup();view=view==='putting'?'follow':'putting';if(view==='putting')greenGrid=true;updateUI();};
 function captureReplay(dt){if(!recording||recording.frames.length>=2500)return;recording.time+=dt;recording.frames.push({t:recording.time,ball:{...ball},actor:structuredClone(actor),angle,view});}
@@ -507,6 +551,7 @@ window.pinecrestNative=async(action,value)=>{
  else if(action==='resume'){if(practice)leavePractice();if(!hasRound&&!savedRound)throw Error('Start a round first.');resumeSavedRound();}
  else if(action==='range'||action==='putting'){startPractice(action==='range'?'range':'putting');}
  else if(action==='daily'){const data=await api('/api/daily',{});if(practice)leavePractice();career=data.profile;savedRound=data.round;applyRound(data.round);}
+ else if(action==='impossible'){startImpossible();}
  else if(action==='greenskeeper'){showCourses();setHomeTab('greenskeeper');}
  else if(action==='character'){showCourses();setHomeTab('character');}
  else if(action==='tutorial')showOnboarding();
