@@ -1,5 +1,5 @@
 import {impossibleHole} from './impossible.js';
-import {createTourField,tourStandings,tourPartners,tourShot} from './tour.js';
+import {createTourField,tourStandings,tourPartners,tourShot,tourPuttFrame} from './tour.js';
 import {createGolfMusic} from './music.js';
 import {GreenskeeperGame,KEEPER_TOOLS} from './greenskeeper.js';
 import {PALETTES,DEFAULT_LOOK} from './character.js';
@@ -459,10 +459,11 @@ function playTourTurn(dt){
   const b=makeBall(hole,...t.to);renderer?.render({hole,ball:b,angle:0,view:'follow',moving:false,actor:null,trail:[],power:0,greenGrid:false},dt);
   if(t.elapsed>1.3)nextTourTurn();return;
  }
- const swing=t.putt?.55:.75,flight=t.putt?clamp(t.distance*.20, .65,3.5):2.1,u=clamp((t.elapsed-swing)/flight,0,1),progress=t.putt?1-(1-u)**2:u;
+ const swing=t.putt?.55:.75,flight=t.putt?t.duration:2.1,u=clamp((t.elapsed-swing)/flight,0,1),progress=t.putt?1-(1-u)**2:u;
  const x=t.from[0]+(t.to[0]-t.from[0])*progress,z=t.from[1]+(t.to[1]-t.from[1])*progress;
- const club=CLUBS[t.clubIndex],angle=Math.atan2(t.to[0]-t.from[0],-(t.to[1]-t.from[1]));
+ const club=CLUBS[t.clubIndex],angle=t.putt?t.angle:Math.atan2(t.to[0]-t.from[0],-(t.to[1]-t.from[1]));
  const b={...makeBall(hole,x,z),y:height(hole,x,z)+.042+(t.putt?0:Math.sin(progress*Math.PI)*Math.min(22,t.distance*.13)),moving:t.elapsed>=swing&&progress<1,airborne:!t.putt&&progress>0&&progress<1,holed:t.holed&&progress===1};
+ if(t.putt)Object.assign(b,tourPuttFrame(t,t.elapsed-swing));
  const back=t.putt?.36:.5;
  const actor={x:t.from[0],z:t.from[1],angle,club,appearance:t.player.appearance,phase:t.elapsed<back?'backswing':t.elapsed<swing?'downswing':'follow',progress:t.elapsed<back?t.elapsed/back:t.elapsed<swing?(t.elapsed-back)/(swing-back):clamp((t.elapsed-swing)/.6,0,1),power:t.putt?clamp(t.power,.08,.5):t.power};
  renderer?.render({hole,ball:b,angle,view:t.putt?'putting':'follow',moving:b.moving,actor,trail:[],power:0,greenGrid:false},dt);

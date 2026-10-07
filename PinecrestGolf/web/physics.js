@@ -84,7 +84,7 @@ export function launch(b,h,club,power,angle,accuracy=0,shotSpin={}){
   else {const loft=(club.loft+back*3)*Math.PI/180,speed=Math.sqrt(dist*9.81/Math.sin(2*loft))*(1+dist*.0007);b.vx=Math.sin(a)*Math.cos(loft)*speed;b.vz=-Math.cos(a)*Math.cos(loft)*speed;b.vy=Math.sin(loft)*speed;b.airborne=true;}
   b.spin=club.loft?err*.10+shape*.037:0;b.loft=club.loft;b.moving=true;b.time=0;
 }
-export function stepBall(b,h,dt){
+export function stepBall(b,h,dt,captureCup=true){
   if(!b.moving)return null;b.time+=dt;const oldX=b.x,oldZ=b.z;let event=null;
   if(b.airborne){
     const wind=effectiveWind(h,b.time),rx=b.vx-wind[0],rz=b.vz-wind[1],sp=Math.hypot(rx,rz,b.vy),vx=b.vx;
@@ -100,7 +100,7 @@ export function stepBall(b,h,dt){
     const sp=Math.hypot(b.vx,b.vz),v=Math.max(0,sp-friction*dt);if(sp>0){b.vx*=v/sp;b.vz*=v/sp;}
     b.x+=b.vx*dt;b.z+=b.vz*dt;b.y=height(h,b.x,b.z)+BALL_RADIUS;
     const cupDist=lineDistance(h.pin[0],h.pin[1],[oldX,oldZ],[b.x,b.z]);
-    if(cupDist<CUP_RADIUS&&sp<1.85){b.x=h.pin[0];b.z=h.pin[1];b.y=height(h,b.x,b.z)-.13;b.vx=b.vy=b.vz=0;b.moving=false;b.holed=true;return 'cup';}
+    if(captureCup&&cupDist<CUP_RADIUS&&sp<1.85){b.x=h.pin[0];b.z=h.pin[1];b.y=height(h,b.x,b.z)-.13;b.vx=b.vy=b.vz=0;b.moving=false;b.holed=true;return 'cup';}
     if(v<.035){b.vx=b.vy=b.vz=0;b.moving=false;return 'rest';}
   }
   if(b.time>40){b.y=height(h,b.x,b.z)+BALL_RADIUS;b.vx=b.vy=b.vz=0;b.moving=false;const lie=surface(h,b.x,b.z);return lie==='water'||lie==='out'?lie:'rest';}
