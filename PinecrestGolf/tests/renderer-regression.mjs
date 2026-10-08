@@ -41,3 +41,13 @@ for(const tool of KEEPER_TOOLS)for(const elapsed of [.4,.9,1.4,1.7])for(const va
 for(const tool of KEEPER_TOOLS){const r=keeperReaction({tool:tool.id,elapsed:.8,reduced:true});assert(Object.values(r).every(v=>v===0));}
 console.log('PASS full spin, rolling chair, flying cap, mirrored double-takes and reduced-motion suppression');
 const {impossibleHole}=await import('../web/impossible.js');const gauntlet=impossibleHole();renderer.loadHole(gauntlet);renderer.render({...state,hole:gauntlet,ball:makeBall(gauntlet),view:'follow'},1/60);renderer.render({...state,hole:gauntlet,ball:makeBall(gauntlet,...gauntlet.pin),view:'putting',greenGrid:true},1/60);console.log('PASS Gauntlet terrain, tiny island green and slope geometry.');
+// NPC camera framing must not change branches at impact, follow-through, or landing.
+let npcEye=null;
+for(const phase of ['backswing','downswing','follow','address'])for(const moving of [false,true]){
+ renderer.eye=[2,3,6];renderer.center=[0,1,0];renderer.render({...state,view:'follow',moving,shotCamera:{angle:0,distance:12,height:8},actor:{...state.actor,phase}},1/60);
+ assert([...renderer.matrix].every(Number.isFinite));
+ // Render easing can differ with motion, so compare the settled camera instead.
+ renderer.render({...state,view:'follow',moving,shotCamera:{angle:0,distance:12,height:8},actor:{...state.actor,phase}},20);
+ if(npcEye)for(let i=0;i<3;i++)assert(Math.abs(renderer.eye[i]-npcEye[i])<1e-8);npcEye=[...renderer.eye];
+}
+console.log('PASS NPC camera keeps the same framing through swing, flight and landing.');

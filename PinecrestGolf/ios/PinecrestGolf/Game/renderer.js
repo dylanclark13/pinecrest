@@ -117,6 +117,10 @@ varying vec3 vColor;varying vec3 vWorld;varying vec3 vNormal;varying float vFog;
     if(view==='home'){const t=this.time*.035,cz=h.pin[1]*.33;eye=[45+Math.sin(t)*21,38+Math.sin(t*.8)*3,cz+70];center=[-4,5,cz-45];}
     else if(view==='greenskeeper'){const y=height(h,actor.x,actor.z);eye=[2.6,y+2.3,4.6];center=[-.65,y+1.2,0];}
     else if(view==='equipment'||view==='character'){eye=[3.0,2.7,4.2];center=[-.8,view==='character'&&w<760?-1.0:1.35,0];}
+    else if(state.shotCamera){
+      const c=state.shotCamera,dx=Math.sin(c.angle),dz=-Math.cos(c.angle);
+      eye=[b.x-dx*c.distance,b.y+c.height,b.z-dz*c.distance];center=[b.x+dx*3,b.y,b.z+dz*3];
+    }
     else if(view==='putting'&&!moving&&!watchingSwing){
       const distance=Math.hypot(h.pin[0]-b.x,h.pin[1]-b.z),back=clamp(distance*.30+2.2,3,6),gy=height(h,b.x,b.z);
       eye=[b.x-dir[0]*back+right[0]*.35,gy+2.2,b.z-dir[2]*back+right[2]*.35];center=[b.x+dir[0]*Math.min(distance,7),gy-.15,b.z+dir[2]*Math.min(distance,7)];

@@ -1,3 +1,4 @@
+import * as npcFlight from '../web/npc-flight.js';
 import {impossibleHole} from '../web/impossible.js';
 import * as tour from '../web/tour.js';
 import {createGolfMusic} from '../web/music.js';
@@ -18,7 +19,7 @@ const elements=new Map([...html.matchAll(/id="([^"]+)"/g)].map(m=>[m[1],new Elem
 const document={getElementById(id){assert(elements.has(id),'Missing element '+id);return elements.get(id)},querySelector(){return [...elements.values()].find(e=>e.open)||null},querySelectorAll(){return []},addEventListener:noop,hidden:false};
 let renderCalls=0;
 class Renderer{constructor(){this.eye=[2,3,6];this.center=[0,0,0];this.trees=[]}loadHole(h){this.h=h}render(state){assert(state.hole);assert(Number.isFinite(state.ball.x));renderCalls++}pointOnCourse(){return null}}
-const context=vm.createContext({impossibleHole,...tour,createGolfMusic,GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{...window,dispatchEvent:noop,addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setInterval:()=>1,setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:nativeFetch});
+const context=vm.createContext({...npcFlight,impossibleHole,...tour,createGolfMusic,GreenskeeperGame,KEEPER_TOOLS,...physics,...courses,...progression,...character,...challenges,console,document,window:{...window,dispatchEvent:noop,addEventListener:noop,matchMedia:()=>({matches:false})},requestAnimationFrame:noop,performance:{now:()=>1000},setInterval:()=>1,setTimeout:()=>1,clearTimeout:noop,structuredClone,GolfRenderer:Renderer,fetch:nativeFetch});
 const source=fs.readFileSync(new URL('../ios/PinecrestGolf/Game/game.js',import.meta.url),'utf8').replace(/^import .*?;\n/gm,'');vm.runInContext(source,context);
 
 await new Promise(r=>setImmediate(r));const run=s=>vm.runInContext(s,context);
