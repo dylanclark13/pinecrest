@@ -14,3 +14,15 @@ assert(shots[1].path.some(p=>p[1]>.1));assert(shots[2].path.some(p=>p[1]<-.1));a
 assert(shots[3].velocity[1]!==shots[4].velocity[1]);
 const miss=planTourPutt({...base,slope:[.035,0]},[0,-94],.04,-.06);assert(!miss.holed);const next=planTourPutt({...base,slope:[.035,0]},miss.to);assert.deepEqual(next.from,miss.to);assert(next.holed);
 console.log('PASS actual rolling-physics replay, left/right break, flat-green straight roll, uphill/downhill pace, forward aim, cup detection and follow-up from actual miss.');
+
+// Fast, contoured greens used to send a perfectly aimed 8 m putt more than
+// 11 m past the cup. Preserve the solver fix and verify actual physics capture.
+for(const [courseIndex,holeIndex] of [[4,12],[5,8],[5,12]]){
+ const h=COURSES[courseIndex].holes[holeIndex],from=[h.pin[0]+8/Math.sqrt(2),h.pin[1]+8/Math.sqrt(2)];
+ const shot=planTourPutt(h,from);assert(shot.holed,`${h.id}: calibrated contour read`);
+ const ball=makeBall(h,...from);[ball.vx,ball.vz]=shot.velocity;ball.moving=true;
+ for(let i=0;i<4801&&ball.moving;i++)stepBall(ball,h,1/120);
+ assert(ball.holed);assert.deepEqual([ball.x,ball.z],shot.to);
+ assert.equal(ball.time,shot.duration);
+}
+console.log('PASS fast-contour putt calibration and independent physical cup capture.');

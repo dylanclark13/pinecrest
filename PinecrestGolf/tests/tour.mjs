@@ -23,7 +23,8 @@ assert((await request('/api/records',undefined,user)).body.records.every(r=>r.pe
 for(const course of COURSES){const rivals=createTourField('trajectory',course.holes,course.level);for(const p of rivals.slice(0,2))for(let h=0;h<54;h++)for(let shot=1;shot<=p.scores[h];shot++){const t=tourShot(course.holes[h%18],p,h,shot);assert([...t.from,...t.to,t.distance].every(Number.isFinite));if(t.penalty){assert(inWater(course.holes[h%18],...t.from));assert(!inWater(course.holes[h%18],...t.to));}else assert(!inWater(course.holes[h%18],...t.from));if(t.putt)assert(['green','fringe'].includes(surface(course.holes[h%18],...t.from))); if(t.holed)assert.deepEqual(t.to,course.holes[h%18].pin);}}
 console.log('PASS 54-hole tournament save/resume, stable NPC field, standings, round boundaries, duplicate reward safety, account isolation, normal-round validation and NPC shot paths.');
 
-const wet={...holes[0],water:[[0,-170,100,100]]},rival=createTourField('wet',Array(18).fill(wet),8)[0];assert(rival.shots.some(plan=>plan.some(t=>t.penalty)));for(const plan of rival.shots)assert.equal(plan.filter(t=>t.penalty).length,plan.filter(t=>t.water).length);
+// Guard the green so execution misses still exercise penalties after safer routing.
+const wet={...holes[0],water:[[holes[0].pin[0]+4,holes[0].pin[1],3,8]]},rival=createTourField('wet',Array(18).fill(wet),8)[0];assert(rival.shots.some(plan=>plan.some(t=>t.penalty)));for(const plan of rival.shots)assert.equal(plan.filter(t=>t.penalty).length,plan.filter(t=>t.water).length);
 const u='reward-test',active=(await request('/api/rounds',{course:0,mode:'full'},u)).body.round;
 const attempt=(await request('/api/impossible/start',{},u)).body.id;
 assert.equal((await request('/api/impossible/reward',{id:attempt,strokes:21},u)).status,400);
@@ -45,3 +46,6 @@ for(const course of COURSES){const field=createTourField('rules-audit',course.ho
  assert.deepEqual(previous,h.pin);
 }}
 console.log('PASS '+checkedShots+' NPC events across all 8 courses: reachable club distances, valid lies, penalty continuity, green-only putts, hole-outs and exact score totals.');
+
+// Keep scoring balance in the main Tour regression entry point.
+await import('./tour-scoring.mjs');
